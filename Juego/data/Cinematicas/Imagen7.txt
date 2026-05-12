@@ -1,0 +1,19 @@
+How to Play:
+
+Navigate through the map with WASD
+
+On the map you can see the structure of the room you are in
+
+However strange objects Will appear with a "?"
+
+Go to those objects to take a picture of them
+
+Some objects can be ítems, puzzles or monsters...
+
+You can try to combine ítems and use them to complete puzles
+
+If you are in danger you can either try to run, try begging for mercy or fight
+
+Open the locked door inside Room 7
+
+Escape!
