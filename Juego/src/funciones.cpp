@@ -197,7 +197,7 @@ Conexion conexiones[] = {
     {5, '2', "../data/Cuartos/Cuarto2.txt", 10, 11, 2},
     {5, '6', "../data/Cuartos/Cuarto6.txt",  4,  1, 6},
     {5, '7', "../data/Cuartos/Cuarto7.txt",  1, 11, 7},
-    {6, '5', "../data/Cuartos/Cuarto5.txt",  1,  4, 5},
+    {6, '5', "../data/Cuartos/Cuarto5.txt",  4,  21, 5},
     {6, '3', "../data/Cuartos/Cuarto3.txt", 10, 11, 3},
 };
 
