@@ -9,93 +9,149 @@
 // Este es un juego de exploración por cuartos en consola.
 // El jugador se mueve con WASD. El mapa es una grilla de chars [12][23].
 // 'P' = jugador, '#' = pared, '.' = piso, '?' = evento aleatorio,
-// 'W' = well, 'C' = cooler, 'S' = seal (pentagrama)
+// 'W' = well, 'C' = cooler, 'G' = seal (pentagrama)
 // Los cuartos se guardan como .txt en ../data/Cuartos/
-// El inventario del jugador se guarda en un .txt en ../data/
+// El inventario del jugador se guarda en un .txt en ../data/inventario.txt
 
 // ─────────────────────────────────────────
 // SECCIÓN 1 — SISTEMA DE EVENTOS AL TOCAR '?'
-// (Ve a la línea 313, donde está el if (mapa[nuevafila][nuevacolumna] == '?'))
+// (Ve a la línea 468, donde está el if (mapa[nuevafila][nuevacolumna] == '?'))
 // ─────────────────────────────────────────
 
-// PASO 1: Antes de mostrar nada, guarda el estado actual.
-//   - Llama guardarMapa() con el archivo del cuarto actual.
-//   - Guarda la fila y columna actual del jugador en variables
-//     (ej: filaGuardada, columnaGuardada). Las vas a necesitar después.
+// PASO 1: Guarda el estado actual ANTES de hacer cualquier cosa.
+//   - Para guardar el mapa usa guardarMapa(), mirá cómo lo llama PonerPausa():
+//       std::string archivoActual = "../data/Cuartos/Cuarto" + std::to_string(habitacion) + ".txt";
+//       guardarMapa(archivoActual, mapa);
+//   - Para guardar la posición del jugador simplemente guarda fila y columna en variables nuevas:
+//       int filaGuardada = fila;
+//       int columnaGuardada = columna;
+//   - Vas a necesitar estas dos variables más adelante.
 
 // PASO 2: Genera un resultado aleatorio con una función nueva llamada
 //   generarEvento(). Esa función retorna un string con el resultado.
 //   Usá rand() con los siguientes pesos de probabilidad:
 //
-//   ALTA probabilidad (70% del total, repartido entre estos):
+//   ALTA probabilidad (70% del total, repartido entre estos 8 objetos):
 //     "KeyCard", "LiquidMercury", "HolyCross", "Note1",
 //     "Note2", "Coin", "ShotGun", "ShotGunAmmo"
 //
-//   MEDIA probabilidad (20% del total, repartido entre estos):
+//   MEDIA probabilidad (15% del total, repartido entre estas 3 interacciones):
 //     "Well", "Cooler", "Seal"
 //
-//   BAJA probabilidad (10% del total, repartido entre estos):
-//     "Monster1", "Monster2"  <- (ponle el nombre que quieras al monstruo)
+//   BAJA probabilidad (15% del total, repartido entre estos):
+//     "Monster"  <- (solo un tipo de monstruo, ver PASO 3 CASO C)
 //
-//   Sugerencia de implementación:
+//   Implementación sugerida:
 //     int r = rand() % 100;
-//     if (r < 70) { // objeto } else if (r < 90) { // interaccion } else { // monstruo }
+//     if (r < 70)      { // objeto       }
+//     else if (r < 85) { // interaccion  }
+//     else             { // monstruo     }
 
-// PASO 3: Según lo que retornó generarEvento(), hay DOS casos:
+// PASO 3: Según lo que retornó generarEvento(), hay TRES casos:
 
 //   CASO A — Encontró un OBJETO (KeyCard, Coin, ShotGun, etc.)
-//     1. Llama LimpiarPantalla()
-//     2. Imprime: "You have found a [nombre del objeto]!"
-//     3. Imprime: "Press 'a' to continue..."
-//     4. Espera que el jugador presione 'a' con _getch()
-//     5. Guarda el nombre del objeto en el inventario:
+//     1. Abrí la imagen del objeto con AbrirImagen(). Mirá la Sección 4 para saber
+//        qué nombre pasarle según el objeto encontrado.
+//     2. Llama LimpiarPantalla() — es una función que ya existe en el código.
+//     3. Espera 1 segundo con: std::this_thread::sleep_for(std::chrono::seconds(1));
+//     4. Imprime: "You have found a [nombre del objeto]!"
+//     5. Imprime: "Press any key to continue..."
+//     6. Espera que el jugador presione cualquier tecla con _getch()
+//     7. Guarda el nombre del objeto en el inventario:
 //        Abrí (o creá si no existe) ../data/inventario.txt con ofstream en modo append (ios::app)
 //        y escribí una línea con el nombre del objeto.
-//     6. En el mapa, reemplazá el '?' por '.' (el símbolo desaparece)
-//     7. Mové al jugador a la posición donde estaba el '?'
-//        (es decir, mapa[nuevafila][nuevacolumna] = 'P', mapa[fila][columna] = '.')
-//     8. Llama mostrarMapa() para volver al cuarto
+//     8. En el mapa, reemplazá el '?' por '.' (el símbolo desaparece):
+//        mapa[nuevafila][nuevacolumna] = '.';
+//     9. Mové al jugador a donde estaba el '?':
+//        mapa[nuevafila][nuevacolumna] = 'P';
+//        mapa[fila][columna] = '.';
+//        fila = nuevafila;
+//        columna = nuevacolumna;
+//    10. Llama mostrarMapa(mapa) para volver al cuarto.
 
 //   CASO B — Encontró una INTERACCIÓN (Well, Cooler, Seal)
 //     1. Llama LimpiarPantalla()
-//     2. Imprime: "You found a [Well / Cooler / Pentagram]!"
-//     3. Imprime: "Press 'a' to continue..."
-//     4. Espera 'a' con _getch()
-//     5. En el mapa, reemplazá el '?' por el char de la interacción:
-//        Well -> 'W',  Cooler -> 'C',  Seal -> 'G'  (usá 'G' para pentagrama/seal)
-//     6. El jugador VUELVE a la posición guardada en PASO 1
-//        (NO se mueve a donde estaba el '?')
-//     7. Llama mostrarMapa()
+//     2. Espera 1 segundo
+//     3. Imprime según cuál encontró:
+//        - Well  -> "You found a well!"
+//        - Cooler -> "You found a cooler!"
+//        - Seal  -> "You found a pentagram!"
+//     4. Imprime: "Press any key to continue..."
+//     5. Espera _getch()
+//     6. En el mapa, reemplazá el '?' por el char de la interacción:
+//        Well -> 'W',  Cooler -> 'C',  Seal -> 'G'
+//     7. El jugador VUELVE a filaGuardada y columnaGuardada (NO se mueve al '?')
+//        mapa[fila][columna] = 'P';  <- jugador vuelve a donde estaba
+//     8. Llama mostrarMapa(mapa)
+
+//   CASO C — Encontró un MONSTRUO
+//     1. Elige aleatoriamente una imagen de monstruo de esta lista con rand():
+//        "../data/3D/monster1.png"
+//        "../data/3D/monster2.png"
+//        "../data/3D/monster3.png"
+//        (ponele los nombres que quieras a los archivos, solo asegurate que coincidan)
+//        Abrila con AbrirImagen() — mirá Sección 4 para ver cómo funciona.
+//     2. Llama LimpiarPantalla()
+//     3. Espera 1 segundo
+//     4. Imprime: "A monster appeared!"
+//     5. Imprime: "Press any key to continue..."
+//     6. Espera _getch()
+//     7. El jugador VUELVE a filaGuardada y columnaGuardada (igual que en CASO B)
+//     8. El '?' desaparece: mapa[nuevafila][nuevacolumna] = '.';
+//     9. Llama mostrarMapa(mapa)
 
 // ─────────────────────────────────────────
 // SECCIÓN 2 — INTERACTUAR CON W, C, G (Well, Cooler, Pentagrama)
 // ─────────────────────────────────────────
 
 // Cuando el jugador camina sobre 'W', 'C' o 'G', hacé lo siguiente:
-//   1. Guardá el mapa y la posición del jugador (igual que en PASO 1)
+//   1. Guardá el mapa y la posición del jugador igual que en PASO 1 de Sección 1:
+//       std::string archivoActual = "../data/Cuartos/Cuarto" + std::to_string(habitacion) + ".txt";
+//       guardarMapa(archivoActual, mapa);
+//       int filaGuardada = fila;
+//       int columnaGuardada = columna;
 //   2. Llama LimpiarPantalla()
 //   3. Imprime: "Select an object to use here:"
-//   4. Abrí ../data/inventario.txt con ifstream y mostrá cada línea (cada objeto)
-//   5. Esperá que el jugador escriba el nombre de un objeto y presione Enter (usá getline o cin)
+//   4. Abrí ../data/inventario.txt con ifstream y mostrá cada línea (cada objeto del inventario)
+//   5. Esperá que el jugador escriba el nombre de un objeto y presione Enter:
+//      std::string objeto;
+//      std::cin >> objeto;
 //   6. Verificá si ese objeto es válido para esa interacción:
 //
 //      'W' (Well):
-//        - Si el jugador usa "Coin" -> eliminar Coin del inventario, agregar "KeyMold"
+//        - Si objeto == "Coin" -> eliminar Coin del inventario, agregar "KeyMold"
 //          Mostrar: "You dropped the coin in the well. You received a KeyMold!"
 //
 //      'C' (Cooler):
-//        - Si el jugador tiene "KeyMold" Y "LiquidMercury" en inventario
-//          y escribe ambos -> eliminarlos, agregar "MetalKey"
+//        - Pedile al jugador DOS objetos separados por espacio:
+//          std::string obj1, obj2;
+//          std::cin >> obj1 >> obj2;
+//        - Si obj1 == "KeyMold" y obj2 == "LiquidMercury" (o al revés):
+//          eliminar ambos del inventario, agregar "MetalKey"
 //          Mostrar: "You used the KeyMold and LiquidMercury. You received a MetalKey!"
-//        - Nota: para esta interacción pedile al jugador que escriba los dos objetos
-//          separados por espacio (ej: "KeyMold LiquidMercury")
 //
-//      'G' (Pentagrama/Seal):
-//        - Si el jugador usa "HolyCross" -> eliminar HolyCross, agregar "HolyBible"
+//      'G' (Pentagrama):
+//        - Si objeto == "HolyCross" -> eliminar HolyCross, agregar "HolyBible"
 //          Mostrar: "You placed the cross on the seal. You received the HolyBible!"
 //
-//   7. Si el objeto no es válido: imprimí "Nothing happened." y volvé al mapa
-//   8. En cualquier caso: esperá 'a', limpiar pantalla, mostrar mapa con posición guardada
+//   7. Si el objeto no es válido: imprimí "Nothing happened."
+//   8. En cualquier caso: esperá _getch(), llamá LimpiarPantalla(), mostrá el mapa
+//      con el jugador en filaGuardada y columnaGuardada
+
+//   CÓMO ELIMINAR UN OBJETO DEL INVENTARIO:
+//   Leé todas las líneas de inventario.txt a un vector<string>, saltea la línea
+//   que coincida con el objeto a eliminar, y reescribí el archivo completo sin ella:
+//
+//     std::vector<std::string> items;
+//     std::ifstream fin("../data/inventario.txt");
+//     std::string linea;
+//     while (std::getline(fin, linea)) items.push_back(linea);
+//     fin.close();
+//
+//     std::ofstream fout("../data/inventario.txt");
+//     for (int i = 0; i < items.size(); i++) {
+//         if (items[i] != "NombreAEliminar") fout << items[i] << "\n";
+//     }
 
 // ─────────────────────────────────────────
 // SECCIÓN 3 — SISTEMA DE COMBINACIÓN (tecla 'i' en el mapa)
@@ -104,54 +160,75 @@
 // Cuando el jugador presiona 'i' mientras está en el mapa:
 //   1. Llama LimpiarPantalla()
 //   2. Imprime: "What do you want to combine?"
-//   3. Mostrá el inventario (leé ../data/inventario.txt línea por línea)
+//   3. Mostrá el inventario (leé ../data/inventario.txt línea por línea con ifstream)
 //   4. Pedí input: el jugador escribe DOS nombres separados por espacio
-//      Ej: "KeyMold LiquidMercury"
-//   5. Verificá si esa combinación es válida. Las combinaciones posibles son:
-//      (Por ahora solo hay una, pero hacé el sistema extensible con if/else if)
-//      - "KeyMold" + "LiquidMercury" -> resultado: "MetalKey"
-//        (Nota: esta combinación igual necesita la Cooler para funcionar,
-//         decidí vos si la combinación sola alcanza o si es solo via Cooler)
+//      std::string obj1, obj2;
+//      std::cin >> obj1 >> obj2;
+//   5. Verificá si esa combinación es válida:
+//      - "KeyMold" + "LiquidMercury" (en cualquier orden) -> resultado: "MetalKey"
+//        Usá if/else if para que sea fácil agregar más combinaciones después.
 //   6. Si es válida:
-//      - Eliminá ambos objetos del inventario (leé todas las líneas, salteá las que coincidan,
-//        reescribí el archivo sin ellas)
-//      - Agregá el nuevo objeto con ofstream en modo append
+//      - Eliminá ambos objetos del inventario (usá el método de la Sección 2)
+//      - Agregá el nuevo objeto con ofstream en modo ios::app
 //      - Mostrá: "You combined [obj1] and [obj2]. You received [resultado]!"
 //   7. Si no es válida: mostrá "These items cannot be combined."
-//   8. Esperá 'a', limpiar pantalla, volvé al mapa con la posición guardada
+//   8. Esperá _getch(), llamá LimpiarPantalla(), mostrá el mapa con mostrarMapa(mapa)
 
 // ─────────────────────────────────────────
-// SECCIÓN 4 — ABRIR IMÁGENES (función AbrirImagen ya existe, solo modificala)
+// SECCIÓN 4 — FUNCIÓN AbrirImagen (ya existe, solo modificala)
 // ─────────────────────────────────────────
 
-// La función AbrirImagen() ya está definida abajo. Modificala para que reciba
-// un string con el nombre de la imagen como parámetro:
+// La función AbrirImagen() ya está definida en el código. Modificala para que reciba
+// un string con el nombre del archivo como parámetro:
 //   void AbrirImagen(std::string nombreImagen)
 //
-// Y que abra ../data/3D/[nombreImagen].png
+// Que abra: "../data/3D/" + nombreImagen + ".png"
+// Mirá cómo está implementada actualmente con #ifdef para Windows/Linux/Mac,
+// solo reemplazá el path fijo por el dinámico.
 //
-// Llamala así cuando corresponda:
-//   - Si encontró "KeyCard"     -> AbrirImagen("keycard")
-//   - Si encontró "Well"        -> AbrirImagen("well")
-//   - Si encontró "Coin"        -> AbrirImagen("coin")
-//   - Si encontró "ShotGun"     -> AbrirImagen("shotgun")
-//   - etc. (ponele el nombre que le hayas dado al archivo .png)
-// Los objetos que NO tienen imagen propia (KeyMold, MetalKey, HolyBible)
-// son porque se obtienen a través de interacciones, no de '?', así que no necesitan imagen.
+// Llamala así según lo que encontró el jugador:
+//   - "KeyCard"      -> AbrirImagen("keycard")
+//   - "Coin"         -> AbrirImagen("coin")
+//   - "ShotGun"      -> AbrirImagen("shotgun")
+//   - "LiquidMercury"-> AbrirImagen("mercury")
+//   - "HolyCross"    -> AbrirImagen("cross")
+//   - "Note1"        -> AbrirImagen("note1")
+//   - "Note2"        -> AbrirImagen("note2")
+//   - "ShotGunAmmo"  -> AbrirImagen("ammo")
+//   - "Well"         -> AbrirImagen("well")
+//   - "Cooler"       -> AbrirImagen("cooler")
+//   - "Seal"         -> AbrirImagen("seal")
+//   - Monstruo       -> AbrirImagen("monster1") o "monster2" o "monster3" (aleatorio con rand())
+// Los objetos KeyMold, MetalKey y HolyBible NO tienen imagen porque se obtienen
+// a través de interacciones, no de '?'.
 
 // ─────────────────────────────────────────
 // NOTAS FINALES
 // ─────────────────────────────────────────
-// - Si el jugador NO está en el mapa (ej: está en una pantalla de evento),
-//   ignorá completamente las teclas WASD. Usá una variable bool enMapa = true/false
-//   y solo procesá movimiento si enMapa == true.
-// - Para eliminar objetos del inventario: leé todas las líneas del .txt a un vector<string>,
-//   usá un for para saltear la línea que querés borrar, y reescribí el archivo completo.
+// - Para el sleep de 1 segundo usá:
+//   std::this_thread::sleep_for(std::chrono::seconds(1));
+//   (ya está incluido <thread> y <chrono> en funciones.h)
+// - Para limpiar pantalla usá LimpiarPantalla() que ya existe.
+// - Para guardar mapa y posición mirá cómo lo hace PonerPausa() en el código.
+// - Para eliminar objetos del inventario usá el método explicado en Sección 2.
 // - Cualquier duda preguntame — Tomás.
 
 
 
 #include "funciones.h"
+
+struct CinematicasMovibles {
+    std::string C2 = "../data/Cinematicas/imagen2";
+    std::string C25 = "../data/Cinematicas/imagen25";
+    std::string C3 = "../data/Cinematicas/imagen3";
+    std::string C35 = "../data/Cinematicas/imagen35";
+    std::string C4 = "../data/Cinematicas/imagen4";
+    std::string C45 = "../data/Cinematicas/imagen45";
+    std::string C5 = "../data/Cinematicas/imagen5";
+    std::string C55 = "../data/Cinematicas/imagen55";
+    std::string C6 = "../data/Cinematicas/imagen6";
+    std::string C65 = "../data/Cinematicas/imagen65";
+};
 
 struct Conexion {
     int habitacionOrigen;
@@ -203,32 +280,105 @@ Conexion conexiones[] = {
 
 int totalConexiones = 15;
 
-// ─────────────────────────────────────────
+// ────────────────────────────────────────-
 
 
 void LimpiarPantalla() {
-
 #ifdef _WIN32
     system("cls");
 #else
-    std::cout << "\033[2J\033[H";
+    system("clear");
 #endif
+}
 
+void CargarCinematica(const std::string& archivo, char arr[100][100]){
+
+    std::ifstream file(archivo);
+
+    if (!file.is_open()) {
+        std::cout << "Error al abrir mapa\n";
+        return;
+    }
+    bool out = false;
+    for (int i = 0; i < 100; i++) {
+        for (int j = 0; j < 100; j++) {
+            file.get(arr[i][j]);
+            if (arr[i][j] == '\n') break;
+            if (arr[i][j] == '~'){
+                out = true;
+            }
+        }
+        if (out == true) break;
+    }
+
+    file.close();
+
+}
+
+void MostrarCinematica(char arr[100][100]) {
+    LimpiarPantalla();
+    std::cout.flush();
+    for (int i = 0; i < 100; i++) {
+        for (int j = 0; j < 100; j++) {
+            if (arr[i][j] == '~') return;
+            if (arr[i][j] == '\0') break;
+            std::cout << arr[i][j];
+        }
+        std::cout << "\n";
+    }
+    std::cout.flush();
+}
+
+void Cinematicas(){
+    std::string arr[] = {
+        "../data/Cinematicas/Imagen1.txt",
+        "../data/Cinematicas/Imagen15.txt",
+        "../data/Cinematicas/Imagen2.txt",
+        "../data/Cinematicas/Imagen25.txt",
+        "../data/Cinematicas/Imagen3.txt",
+        "../data/Cinematicas/Imagen35.txt",
+        "../data/Cinematicas/Imagen4.txt",
+        "../data/Cinematicas/Imagen45.txt",
+        "../data/Cinematicas/Imagen5.txt",
+        "../data/Cinematicas/Imagen55.txt",
+        "../data/Cinematicas/imagen6.txt",
+        "../data/Cinematicas/imagen65.txt",
+        "../data/Cinematicas/Imagen7.txt",
+        "../data/Cinematicas/Imagen75.txt",
+    };
+
+    std::string* p = arr;
+
+    for (int i = 0; i < 13; i += 2) {
+
+        for (int t = 0; t < 11; t++) {
+
+            char cine1[100][100] = {};
+            CargarCinematica(*(p + i), cine1);
+            MostrarCinematica(cine1);
+            std::this_thread::sleep_for(std::chrono::milliseconds(800));
+
+            char cine2[100][100] = {};
+            CargarCinematica(*(p + i + 1), cine2);
+            MostrarCinematica(cine2);
+            std::this_thread::sleep_for(std::chrono::milliseconds(800));
+        }
+    }
 }
 
 void AbrirImagen(){
 
     #if defined(_WIN32) || defined(_WIN64)
 
-        system("start ../data/3D/imagen.png");
+        //system("start imagen");
 
     #elif defined(__linux__)
 
-        system("xdg-open ../data/3D/imagen.png");
+        //system("xdg-open imagen");
 
     #elif defined(__APPLE__) || defined(__MACH__)
 
-        system("open ../data/3D/imagen.png");
+        //system("open imagen");
 
     #endif
 }
@@ -299,6 +449,10 @@ void movimiento() {
         int nuevafila = fila;
         int nuevacolumna = columna;
 
+        if (tecla == 'm') {
+            PonerPausa(mapa, habitacion, fila, columna);
+            continue;
+        }
         if (tecla == 'd') {
             nuevacolumna = columna+1;
         }else if (tecla == 'a'){
@@ -322,21 +476,17 @@ void movimiento() {
             if ((conexiones[i].habitacionOrigen == habitacion) &&
                 (conexiones[i].puerta == celdaDestino)) {
 
-                // borra jugador del mapa actual
                 mapa[fila][columna] = '.';
 
                 std::string archivoActual = "../data/Cuartos/Cuarto" + std::to_string(habitacion) + ".txt";
                 guardarMapa(archivoActual, mapa);
 
-                // carga nuevo cuarto
                 cargarMapa(conexiones[i].archivoDestino, mapa);
 
-                // actualiza posicion y habitacion
                 fila       = conexiones[i].nuevaFila;
                 columna    = conexiones[i].nuevaColumna;
                 habitacion = conexiones[i].habitacionDestino;
 
-                // pone jugador en nueva posicion
                 mapa[fila][columna] = 'P';
 
                 mostrarMapa(mapa);
@@ -357,4 +507,39 @@ void movimiento() {
         mostrarMapa(mapa);
     }
 
+}
+
+void ResetearCuartos(){
+    for (int i = 1; i <= 7; i++) {
+        std::string origen = "../data/CuartosOriginales/Cuarto" + std::to_string(i) + ".txt";
+        std::string destino = "../data/Cuartos/Cuarto" + std::to_string(i) + ".txt";
+
+        std::ifstream src(origen);
+        std::ofstream dst(destino);
+
+        for (char c; src.get(c);) {
+            dst << c;
+        }
+    }
+}
+
+void PonerPausa(char mapa[12][23], int habitacion, int fila, int columna){
+    std::string archivoActual = "../data/Cuartos/Cuarto" + std::to_string(habitacion) + ".txt";
+    guardarMapa(archivoActual, mapa);
+
+    LimpiarPantalla();
+    std::cout <<"PAUSE\n";
+    std::cout <<"Press 'j' to continue playing or press 's' to exit\n";
+    std::cout <<"Warning, if you choose to exit now your progress will not be saved!\n";
+
+    while (true) {
+        char tecla = _getch();
+        if (tecla == 'j') {
+            mostrarMapa(mapa);
+            return;
+        } else if (tecla == 's') {
+            ResetearCuartos();
+            exit(0);
+        }
+    }
 }

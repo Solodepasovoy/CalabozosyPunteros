@@ -2,6 +2,7 @@
 
 int main() {
 
+    Cinematicas();
     movimiento();
     
     return 0;
