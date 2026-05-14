@@ -15,3 +15,7 @@ void movimiento();
 void guardarMapa(const std::string& archivo, char mapa[12][23]);
 void ResetearCuartos();
 void PonerPausa(char mapa[12][23], int habitacion, int fila, int columna);
+void Correr(int vida);
+void Monstruo(int vidaP);
+void Fight();
+void Flee();
