@@ -9,6 +9,6 @@
   #    |_______|    #
   ###################
 
-You find an old camera.
+Encontraste una camara vieja.
 
-It still works.~
+Aun funciona.~

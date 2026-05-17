@@ -14,7 +14,7 @@
   |     MISSING CASE    |
   |_____________________|
 
-Police closed the case.
+La policia cerro el caso.
 
-Witnesses claimed strange sounds
-were heard from underground tunnels.~
+Testigos afirman que escuchan sonidos
+en las noches provenientes del hotel.~

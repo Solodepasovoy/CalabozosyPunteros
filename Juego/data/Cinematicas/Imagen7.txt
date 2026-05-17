@@ -1,27 +1,24 @@
-How to Play:
+Como Jugar:
 
-Navigate through the map with "WASD"
+Navega por el mapa con "WASD"
 
-Open your Inventory with "i"
+Abre tu inventario con "i"
 
-On the map you can see the structure of the room you are in
+Ponle pausa al juego con "m"
 
-However strange objects Will appear with a "?"
+En el mapa puedes ver la estructura del cuarto en el que estas
 
-Go to those objects to take a picture of them
+Sin embargo objetos raros apareceran con un "?"
 
-Some objects can be items, puzzles or monsters...
+Ve hacia esos objetos para tomar una foto de ellos
 
-You can try to combine items and use them to complete puzles
+Algunos objetos pueden ser items, puzzles o monstruos...
 
-If you are in danger you can either try to run, try begging for mercy or fight
+Puedes intentar combinar items y usarlos para completar puzles
 
-Open the locked door inside Room 7
+Si estas en peligro puedes intentar correr, rogar por piedad o pelear
 
-Escape!
+Abre la puerta bloqueada dentro del Cuarto 7
 
-.  .
-
-\  /
- \/~
+Escapa!~
 
