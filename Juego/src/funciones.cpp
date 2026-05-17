@@ -1,93 +1,5 @@
-// ─────────────────────────────────────────
-// PENDIENTE PARA ALEJO
-// ─────────────────────────────────────────
-
-// ── 1. EVENTO AL TOCAR '?' ──────────────────────────────────────
-// En movimiento(), donde dice if (mapa[nuevafila][nuevacolumna] == '?'):
-// Reemplazá el Monstruo() directo por una función generarEvento() que:
-//   - Guarde el mapa y posición (archivoActual, filaGuardada, columnaGuardada)
-//   - Con rand() % 100 decida si fue objeto (0-69), interacción (70-84) o monstruo (85-99)
-//   - Si fue OBJETO:
-//       AbrirImagen("keycard") / ("coin") / ("shotgun") etc según cuál tocó
-//       LimpiarPantalla()
-//       Imprimí "You found a X!" y "It has been added to your inventory."
-//       Guardá en ../data/inventario.txt con ofstream en modo ios::app
-//       Esperá 2 segundos, borrá el '?', volvé al jugador a filaGuardada/columnaGuardada
-//       guardarMapa(), mostrarMapa()
-//   - Si fue INTERACCIÓN (Well/Cooler/Seal):
-//       AbrirImagen("well") / ("cooler") / ("seal")
-//       LimpiarPantalla()
-//       Imprimí "You found a well!" etc
-//       Imprimí "Press any key to continue..." y esperá _getch()
-//       Reemplazá '?' por 'W' / 'C' / 'G' en el mapa
-//       Volvé al jugador a filaGuardada/columnaGuardada
-//       guardarMapa(), mostrarMapa()
-//   - Si fue MONSTRUO:
-//       AbrirImagen("monster1") / ("monster2") / ("monster3") — aleatorio
-//       LimpiarPantalla()
-//       Imprimí "A monster appeared!" y "Press any key to continue..."
-//       Esperá _getch(), borrá '?', volvé al jugador a filaGuardada/columnaGuardada
-//       guardarMapa(), mostrarMapa()
-//       Llamá Monstruo(mapa, habitacion, fila, columna)
-
-// ── 2. INTERACTUAR CON 'W', 'C', 'G' ───────────────────────────
-// En movimiento(), agregá estos casos ANTES del swap del jugador:
-//   if (mapa[nuevafila][nuevacolumna] == 'W') { ... }
-//   if (mapa[nuevafila][nuevacolumna] == 'C') { ... }
-//   if (mapa[nuevafila][nuevacolumna] == 'G') { ... }
-// Cada uno debe:
-//   Guardar mapa y posición
-//   LimpiarPantalla()
-//   Imprimí "Select an object to use here:" y "(Press 'b' to go back to the map)"
-//   Mostrá el inventario leyendo ../data/inventario.txt línea por línea con ifstream
-//   Leer std::string objeto con std::cin >> objeto
-//   Si objeto == "b": LimpiarPantalla(), mostrarMapa(mapa), continue
-//   Verificar si el objeto es válido para esa interacción:
-//     'W': objeto válido = "Coin" → eliminarlo, agregar "KeyMold", reemplazar 'W' por '.'
-//     'C': objeto válido = "MetalKey" → eliminarlo, reemplazar 'C' por '.'
-//     'G': objeto válido = "HolyCross" → eliminarlo, agregar "HolyBible", reemplazar 'G' por '.'
-//   Si inválido: LimpiarPantalla(), "Invalid object. Nothing happened.", 1 segundo, mostrarMapa()
-//   Si válido: guardarMapa(), LimpiarPantalla(), volver al jugador, mostrarMapa()
-// Para eliminar un objeto del inventario usá el método de leer todo en vector,
-// reescribir sin ese elemento (ver instrucciones originales)
-
-// ── 3. INVENTARIO CON TECLA 'i' ─────────────────────────────────
-// En movimiento(), agregá: if (tecla == 'i') { ... }
-//   Guardar mapa y posición
-//   LimpiarPantalla()
-//   Imprimí "INVENTORY — What do you want to combine?"
-//   Imprimí "(Press 'b' to go back to the map)"
-//   Mostrá el inventario leyendo ../data/inventario.txt con ifstream
-//   Leer std::string obj1 con std::cin >> obj1
-//   Si obj1 == "b": LimpiarPantalla(), mostrarMapa(mapa), continue
-//   Leer std::string obj2 con std::cin >> obj2
-//   Verificar combinación:
-//     "KeyMold" + "LiquidMercury" (cualquier orden) → eliminar ambos, agregar "MetalKey"
-//     Imprimí "You combined KeyMold and LiquidMercury. You received a MetalKey!"
-//   Si inválida: LimpiarPantalla(), "Invalid combination.", 1 segundo, mostrarMapa()
-//   Si válida: 1 segundo, LimpiarPantalla(), mostrarMapa()
-
-// ── 4. PUERTA BLOQUEADA 'D' ──────────────────────────────────────
-// En movimiento(), agregá: if (mapa[nuevafila][nuevacolumna] == 'D') { ... }
-//   Guardar mapa y posición
-//   AbrirImagen("door")  ← usa esta función, abre en ventana aparte
-//   LimpiarPantalla()
-//   Imprimí "The door is locked."
-//   Imprimí "Select an object to use:" y "(Press 'b' to go back to the map)"
-//   Mostrá el inventario con ifstream
-//   Leer std::string objeto con std::cin >> objeto
-//   Si objeto == "b": LimpiarPantalla(), mostrarMapa(mapa), continue
-//   Si objeto == "MetalKey":
-//     Imprimí "The door opened!"
-//     Eliminar "MetalKey" del inventario
-//     Reemplazar 'D' por '.' en el mapa
-//     guardarMapa(), LimpiarPantalla(), volver jugador, mostrarMapa()
-//   Si inválido: LimpiarPantalla(), "Invalid object. This doesn't work here."
-//     1 segundo, volver jugador, guardarMapa(), mostrarMapa()
-
-
-
 #include "funciones.h"
+#include <vector>
 
 struct CinematicasMovibles {
     std::string C2 = "../data/Cinematicas/imagen2";
@@ -337,6 +249,246 @@ void mostrarMapa(char mapa[12][23]) {
     }
 }
 
+void eliminarDeInventario(const std::string& objeto) {
+    std::ifstream entrada("../data/inventario.txt");
+    std::vector<std::string> items;
+    std::string linea;
+    bool eliminado = false;
+    while (std::getline(entrada, linea)) {
+        if (!eliminado && linea == objeto) {
+            eliminado = true;
+        } else if (!linea.empty()) {
+            items.push_back(linea);
+        }
+    }
+    entrada.close();
+    std::ofstream salida("../data/inventario.txt");
+    for (int i = 0; i < items.size(); i++) {
+        salida << items[i] << "\n";
+    }
+    salida.close();
+}
+
+void mostrarInventarioEnPantalla() {
+    std::ifstream inv("../data/inventario.txt");
+    std::string linea;
+    std::cout << "\n--- Inventario ---\n";
+    bool vacio = true;
+    while (std::getline(inv, linea)) {
+        if (!linea.empty()) {
+            std::cout << "- " << linea << "\n";
+            vacio = false;
+        }
+    }
+    if (vacio) std::cout << "(vacio)\n";
+    std::cout << "------------------\n";
+    inv.close();
+}
+
+void generarEvento(char mapa[12][23], int& habitacion, int& fila, int& columna, int nuevafila, int nuevacolumna) {
+    std::string archivoActual = "../data/Cuartos/Cuarto" + std::to_string(habitacion) + ".txt";
+    int filaGuardada = fila;
+    int columnaGuardada = columna;
+
+    int r = rand() % 100;
+
+    if (r <= 69) {
+        std::string nombres[] = { "KeyCard", "KeyMold", "LiquidMercury", "HolyCross", "Note1", "Note2", "Coin", "ShotGun", "ShotGunAmmo" };
+        std::string imagenes[] = { "KeyCard.png", "KeyMold.png", "LiquidMercury.png", "HolyCross.png", "Note1.png", "Note2.png", "Coin.png", "ShotGun.png", "Ammo.png" };
+        int idx = rand() % 9;
+
+        AbrirImagen(imagenes[idx]);
+        LimpiarPantalla();
+        std::cout << "You found a " << nombres[idx] << "!\n";
+        std::cout << "It has been added to your inventory.\n";
+
+        std::ofstream inv("../data/inventario.txt", std::ios::app);
+        inv << nombres[idx] << "\n";
+        inv.close();
+
+        std::this_thread::sleep_for(std::chrono::seconds(2));
+        mapa[nuevafila][nuevacolumna] = '.';
+        mapa[filaGuardada][columnaGuardada] = 'P';
+        guardarMapa(archivoActual, mapa);
+        mostrarMapa(mapa);
+
+    } else if (r <= 84) {
+        std::string opciones[] = { "Well", "Cooler", "Seal" };
+        std::string imagenes[] = { "W.png", "C.png", "Seal.png" };
+        char simbolos[] = { 'W', 'C', 'G' };
+        int idx = rand() % 3;
+
+        AbrirImagen(imagenes[idx]);
+        LimpiarPantalla();
+        std::cout << "You found a " << opciones[idx] << "!\n";
+        std::cout << "Press any key to continue...\n";
+        _getch();
+
+        mapa[nuevafila][nuevacolumna] = simbolos[idx];
+        mapa[filaGuardada][columnaGuardada] = 'P';
+        guardarMapa(archivoActual, mapa);
+        mostrarMapa(mapa);
+
+    } else {
+        std::string lista[] = { "monster1.png", "monster2.png", "monster3.png" };
+        std::string imagen = lista[rand() % 3];
+
+        AbrirImagen(imagen);
+        LimpiarPantalla();
+        std::cout << "A monster appeared!\n";
+        std::cout << "Press any key to continue...\n";
+        _getch();
+
+        mapa[nuevafila][nuevacolumna] = '.';
+        mapa[filaGuardada][columnaGuardada] = 'P';
+        guardarMapa(archivoActual, mapa);
+        mostrarMapa(mapa);
+        Monstruo(mapa, habitacion, fila, columna);
+    }
+}
+
+void interactuarConW(char mapa[12][23], int& habitacion, int& fila, int& columna, int nuevafila, int nuevacolumna) {
+    std::string archivoActual = "../data/Cuartos/Cuarto" + std::to_string(habitacion) + ".txt";
+    guardarMapa(archivoActual, mapa);
+    LimpiarPantalla();
+    std::cout << "Select an object to use here:\n";
+    std::cout << "(Press 'b' to go back to the map)\n";
+    mostrarInventarioEnPantalla();
+
+    std::string objeto;
+    std::cin >> objeto;
+
+    if (objeto == "b") {
+        LimpiarPantalla();
+        mostrarMapa(mapa);
+        return;
+    }
+    if (objeto == "Coin") {
+        eliminarDeInventario("Coin");
+        std::ofstream inv("../data/inventario.txt", std::ios::app);
+        inv << "KeyMold\n";
+        inv.close();
+        mapa[nuevafila][nuevacolumna] = '.';
+        mapa[fila][columna] = 'P';
+        guardarMapa(archivoActual, mapa);
+        LimpiarPantalla();
+        std::cout << "You used Coin. You received a KeyMold!\n";
+        std::this_thread::sleep_for(std::chrono::seconds(1));
+        mostrarMapa(mapa);
+    } else {
+        LimpiarPantalla();
+        std::cout << "Invalid object. Nothing happened.\n";
+        std::this_thread::sleep_for(std::chrono::seconds(1));
+        mostrarMapa(mapa);
+    }
+}
+
+void interactuarConC(char mapa[12][23], int& habitacion, int& fila, int& columna, int nuevafila, int nuevacolumna) {
+    std::string archivoActual = "../data/Cuartos/Cuarto" + std::to_string(habitacion) + ".txt";
+    guardarMapa(archivoActual, mapa);
+    LimpiarPantalla();
+    std::cout << "Select an object to use here:\n";
+    std::cout << "(Press 'b' to go back to the map)\n";
+    mostrarInventarioEnPantalla();
+
+    std::string objeto;
+    std::cin >> objeto;
+
+    if (objeto == "b") {
+        LimpiarPantalla();
+        mostrarMapa(mapa);
+        return;
+    }
+    if (objeto == "MetalKey") {
+        eliminarDeInventario("MetalKey");
+        mapa[nuevafila][nuevacolumna] = '.';
+        mapa[fila][columna] = 'P';
+        guardarMapa(archivoActual, mapa);
+        LimpiarPantalla();
+        std::cout << "The cooler opened!\n";
+        std::this_thread::sleep_for(std::chrono::seconds(1));
+        mostrarMapa(mapa);
+    } else {
+        LimpiarPantalla();
+        std::cout << "Invalid object. Nothing happened.\n";
+        std::this_thread::sleep_for(std::chrono::seconds(1));
+        mostrarMapa(mapa);
+    }
+}
+
+void interactuarConG(char mapa[12][23], int& habitacion, int& fila, int& columna, int nuevafila, int nuevacolumna) {
+    std::string archivoActual = "../data/Cuartos/Cuarto" + std::to_string(habitacion) + ".txt";
+    guardarMapa(archivoActual, mapa);
+    LimpiarPantalla();
+    std::cout << "Select an object to use here:\n";
+    std::cout << "(Press 'b' to go back to the map)\n";
+    mostrarInventarioEnPantalla();
+
+    std::string objeto;
+    std::cin >> objeto;
+
+    if (objeto == "b") {
+        LimpiarPantalla();
+        mostrarMapa(mapa);
+        return;
+    }
+    if (objeto == "HolyCross") {
+        eliminarDeInventario("HolyCross");
+        std::ofstream inv("../data/inventario.txt", std::ios::app);
+        inv << "HolyBible\n";
+        inv.close();
+        mapa[nuevafila][nuevacolumna] = '.';
+        mapa[fila][columna] = 'P';
+        guardarMapa(archivoActual, mapa);
+        LimpiarPantalla();
+        std::cout << "You used HolyCross. You received a HolyBible!\n";
+        std::this_thread::sleep_for(std::chrono::seconds(1));
+        mostrarMapa(mapa);
+    } else {
+        LimpiarPantalla();
+        std::cout << "Invalid object. Nothing happened.\n";
+        std::this_thread::sleep_for(std::chrono::seconds(1));
+        mostrarMapa(mapa);
+    }
+}
+
+void interactuarConD(char mapa[12][23], int& habitacion, int& fila, int& columna, int nuevafila, int nuevacolumna) {
+    std::string archivoActual = "../data/Cuartos/Cuarto" + std::to_string(habitacion) + ".txt";
+    guardarMapa(archivoActual, mapa);
+    AbrirImagen("puerta.png");
+    LimpiarPantalla();
+    std::cout << "The door is locked.\n";
+    std::cout << "Select an object to use:\n";
+    std::cout << "(Press 'b' to go back to the map)\n";
+    mostrarInventarioEnPantalla();
+
+    std::string objeto;
+    std::cin >> objeto;
+
+    if (objeto == "b") {
+        LimpiarPantalla();
+        mostrarMapa(mapa);
+        return;
+    }
+    if (objeto == "MetalKey") {
+        eliminarDeInventario("MetalKey");
+        mapa[nuevafila][nuevacolumna] = '.';
+        mapa[fila][columna] = 'P';
+        guardarMapa(archivoActual, mapa);
+        LimpiarPantalla();
+        std::cout << "The door opened!\n";
+        std::this_thread::sleep_for(std::chrono::seconds(1));
+        mostrarMapa(mapa);
+    } else {
+        LimpiarPantalla();
+        std::cout << "Invalid object. This doesn't work here.\n";
+        std::this_thread::sleep_for(std::chrono::seconds(1));
+        mapa[fila][columna] = 'P';
+        guardarMapa(archivoActual, mapa);
+        mostrarMapa(mapa);
+    }
+}
+
 void movimiento() {
 
     if (VidaJugador <= 0){
@@ -363,9 +515,53 @@ void movimiento() {
             PonerPausa(mapa, habitacion, fila, columna);
             continue;
         }
+
+        if (tecla == 'i') {
+            std::string archivoActual = "../data/Cuartos/Cuarto" + std::to_string(habitacion) + ".txt";
+            guardarMapa(archivoActual, mapa);
+            LimpiarPantalla();
+            std::cout << "INVENTORY - What do you want to combine?\n";
+            std::cout << "(Press 'b' to go back to the map)\n";
+            mostrarInventarioEnPantalla();
+
+            std::string obj1;
+            std::cin >> obj1;
+
+            if (obj1 == "b") {
+                LimpiarPantalla();
+                mostrarMapa(mapa);
+                continue;
+            }
+
+            std::cout << "And combine with:\n";
+            std::string obj2;
+            std::cin >> obj2;
+
+            bool combinacionValida = (obj1 == "KeyMold" && obj2 == "LiquidMercury") ||
+                                     (obj1 == "LiquidMercury" && obj2 == "KeyMold");
+
+            if (combinacionValida) {
+                eliminarDeInventario("KeyMold");
+                eliminarDeInventario("LiquidMercury");
+                std::ofstream inv("../data/inventario.txt", std::ios::app);
+                inv << "MetalKey\n";
+                inv.close();
+                std::cout << "You combined KeyMold and LiquidMercury. You received a MetalKey!\n";
+                std::this_thread::sleep_for(std::chrono::seconds(1));
+                LimpiarPantalla();
+                mostrarMapa(mapa);
+            } else {
+                LimpiarPantalla();
+                std::cout << "Invalid combination.\n";
+                std::this_thread::sleep_for(std::chrono::seconds(1));
+                mostrarMapa(mapa);
+            }
+            continue;
+        }
+
         if (tecla == 'd') {
             nuevacolumna = columna+1;
-        }else if (tecla == 'a'){
+        } else if (tecla == 'a'){
             nuevacolumna = columna-1;
         } else if (tecla == 'w'){
             nuevafila = fila -1;
@@ -374,13 +570,32 @@ void movimiento() {
         }
         
         if (mapa[nuevafila][nuevacolumna] == '#') continue;
-        //Instrucciones aqui:
-        //Tienes que poner que cuando el personaje toca un ? (ya te lo puse aqui abajo) pasen 3 cosas.
+
         if (mapa[nuevafila][nuevacolumna] == '?'){
-            mapa[nuevafila][nuevacolumna] = '.';
-            Monstruo(mapa, habitacion, fila, columna);
+            generarEvento(mapa, habitacion, fila, columna, nuevafila, nuevacolumna);
             continue;
         }
+
+        if (mapa[nuevafila][nuevacolumna] == 'W') {
+            interactuarConW(mapa, habitacion, fila, columna, nuevafila, nuevacolumna);
+            continue;
+        }
+
+        if (mapa[nuevafila][nuevacolumna] == 'C') {
+            interactuarConC(mapa, habitacion, fila, columna, nuevafila, nuevacolumna);
+            continue;
+        }
+
+        if (mapa[nuevafila][nuevacolumna] == 'G') {
+            interactuarConG(mapa, habitacion, fila, columna, nuevafila, nuevacolumna);
+            continue;
+        }
+
+        if (mapa[nuevafila][nuevacolumna] == 'D') {
+            interactuarConD(mapa, habitacion, fila, columna, nuevafila, nuevacolumna);
+            continue;
+        }
+
         char celdaDestino = mapa[nuevafila][nuevacolumna];
         bool cambio = false;
         
