@@ -1,98 +1,4 @@
-// Alejo, necesito que me hagas estas mecánicas para el sistema del mapa:
-//
-// 1. Sistema de inventario al presionar `i` dentro del mapa.
-//    Debe abrir un menú donde se vean los objetos que tengo,
-//    cuántos tengo y cuál estoy seleccionando.
-//
-// 2. Sistema para combinar objetos desde el inventario.
-//    Cuando combine dos objetos válidos, se deben eliminar los dos
-//    del inventario y crear uno nuevo.
-//
-// 3. Sistema de eventos random al presionar `?` en el mapa.
-//    No siempre debe salir monstruo:
-//    45% probabilidad objeto
-//    30% probabilidad interaccion
-//    25% probabilidad monstruo
-//
-// 4. Si sale un objeto, debe abrirse la imagen del objeto con su nombre
-//    (`Nombre.png`) usando la función adecuada,
-//    y ese objeto debe agregarse al inventario.
-//
-// 5. Si sale una interaccion, debe abrirse la imagen de la interaccion
-//    y ese `?` del mapa debe convertirse en la inicial de la interaccion.
-//    Luego, si el jugador vuelve a tocar esa casilla,
-//    debe abrirse una pantalla para usar un objeto del inventario
-//    sobre esa interaccion.
-//    Si funciona, esa casilla se convierte en `.` y se entrega un nuevo objeto.
-//    El objeto usado debe desaparecer del inventario.
-//
-// 6. Si el jugador encuentra una casilla `D`,
-//    debe abrirse la imagen de la puerta y dejarme usar objetos desde el inventario.
-//    En esa puerta se deben usar 4 cosas.
-//
-// 7. También necesito que en la puerta se pueda colocar un código.
-//
-// Lista de objetos:
-// Ammo, Coin, KeyCard, KeyMold, Note1, Note2, HolyCross, LiquidMercury, ShotGun, Key, LoadedShotGun.
-//
-// Cómo se consiguen:
-// - KeyMold se obtiene al usar Coin en el Well.
-// - LiquidMercury se obtiene al usar HolyCross en la interaccion Seal.
-// - Key se obtiene al mezclar LiquidMercury con KeyMold y usarlo en la interaccion Cooler.
-// - LoadedShotGun se obtiene al combinar ShotGun con Ammo.
-//
-// Interacciones:
-// - `C` = Cooler
-// - `S` = Seal
-// - `W` = Well
-// - `D` = Puerta
-//
-// Cuando ya tenga todo para la puerta, esa casilla debe cambiarse a `.`.
-//
-// Te dejo también cómo está referenciado todo en el código para que lo integres sin romper la estructura actual.
-
-
 #include "funciones.h"
-
-struct CinematicasMovibles {
-    std::string C2 = "../data/Cinematicas/Imagen2";
-    std::string C25 = "../data/Cinematicas/Imagen25";
-    std::string C3 = "../data/Cinematicas/Imagen3";
-    std::string C35 = "../data/Cinematicas/Imagen35";
-    std::string C4 = "../data/Cinematicas/Imagen4";
-    std::string C45 = "../data/Cinematicas/Imagen45";
-    std::string C5 = "../data/Cinematicas/Imagen5";
-    std::string C55 = "../data/Cinematicas/Imagen55";
-    std::string C6 = "../data/Cinematicas/Imagen6";
-    std::string C65 = "../data/Cinematicas/Imagen65";
-};
-
-struct ImagesMonstruos{
-    std::string a = "monster1.png";
-    std::string b = "monster2.png";
-    std::string c = "monster3.png";
-    std::string d = "monster4.png";
-    std::string e = "monster5.png";
-    std::string f = "monster6.png";
-};
-
-struct ImagesObjetos{
-    std::string ammo = "Ammo.png";
-    std::string coin = "Coin.png";
-    std::string holyCross = "HolyCross.png";
-    std::string keyCard = "KeyCard.png";
-    std::string liquidMercury = "LiquidMercury.png";
-    std::string shotGun = "ShotGun.png";
-    std::string note1 = "Note1.png";
-    std::string note2 = "Note2.png";
-};
-
-struct ImagesInteracciones{
-    std::string puerta = "puerta.png";
-    std::string seal = "Seal.png";
-    std::string c = "C.png";
-    std::string w = "W.png";
-};
 
 
 struct Conexion {
@@ -102,26 +8,6 @@ struct Conexion {
     int nuevaFila;
     int nuevaColumna;
     int habitacionDestino;
-};
-
-struct Objetos {
-    std::string card = "KeyCard";
-    std::string mold = "KeyMold";
-    std::string liquid = "LiquidMercury";
-    std::string cross = "HolyCross";
-    std::string bible = "HolyBible";
-    std::string notea = "Note1";
-    std::string noteb = "Note2";
-    std::string coin = "Coin";
-    std::string shot = "ShotGun";
-    std::string ammo = "ShotGunAmmo";
-    std::string key = "MetalKey";
-};
-
-struct Interacciones {
-    char well = 'W';
-    char cooler = 'C';
-    char seal = 'S';
 };
 
 Conexion conexiones[] = {
@@ -146,6 +32,12 @@ int totalConexiones = 15;
 
 int VidaJugador = 100;
 
+int ObjetosRequeridosPuerta = 3;
+
+typedef std::chrono::steady_clock::time_point TimePoint;
+typedef std::chrono::seconds Segundos;
+typedef std::chrono::milliseconds Milisegundos;
+
 void LimpiarPantalla() {
 #ifdef _WIN32
     system("cls");
@@ -157,22 +49,24 @@ void LimpiarPantalla() {
 #if defined(_WIN32) || defined(_WIN64)
 #include <windows.h>
 #include <mmsystem.h>
-#pragma comment(lib, "winmm.lib")
 
-// ─── Música / Audio (Windows) ───────────────────────────────────────────────
+#if defined(_MSC_VER)
+#pragma comment(lib, "winmm.lib")
+#endif
+
 void reproducir(const std::string& archivo) {
     std::string ruta = archivo;
-    for (char& c : ruta) if (c == '/') c = '\\';
-    // SND_ASYNC hace que suene de fondo sin congelar el juego
+    for (int i = 0; i < (int)ruta.size(); i++) {
+        if (ruta[i] == '/') ruta[i] = '\\';
+    }
     PlaySoundA(ruta.c_str(), NULL, SND_FILENAME | SND_ASYNC | SND_NODEFAULT);
 }
 
 void parar_todos() {
-    PlaySoundA(NULL, NULL, 0); // Detiene cualquier sonido reproduciéndose con PlaySound
+    PlaySoundA(NULL, NULL, 0);
 }
 
 #elif defined(__APPLE__)
-// ─── Música / Audio (Mac) ───────────────────────────────────────────────────
 void reproducir(const std::string& archivo) { 
     system(("afplay \"" + archivo + "\" >/dev/null 2>&1 &").c_str()); 
 }
@@ -181,7 +75,6 @@ void parar_todos() {
 }
 
 #else
-// ─── Música / Audio (Linux) ─────────────────────────────────────────────────
 void reproducir(const std::string& archivo) { 
     system(("aplay \"" + archivo + "\" >/dev/null 2>&1 &").c_str()); 
 }
@@ -356,6 +249,386 @@ void mostrarMapa(char mapa[12][23]) {
     }
 }
 
+void eliminarInventario(){
+    std::ofstream archivo("../data/inventario.txt");
+    archivo.close();
+}
+void eliminarDeInventario(const char* objeto) {
+    std::ifstream entrada("../data/inventario.txt");
+
+    char inventario[20][32] = {};
+    int totalItems = 0;
+
+    char linea[32];
+    bool eliminado = false;
+
+    while (entrada.getline(linea, 32)) {
+        if (!eliminado && strcmp(linea, objeto) == 0) {
+            eliminado = true;
+        } else if (linea[0] != '\0') {
+            strncpy(inventario[totalItems], linea, 31);
+            inventario[totalItems][31] = '\0';
+            totalItems++;
+        }
+    }
+    entrada.close();
+
+    std::ofstream salida("../data/inventario.txt");
+    for (int i = 0; i < totalItems; i++) {
+        salida << inventario[i] << "\n";
+    }
+    salida.close();
+}
+
+void mostrarInventarioEnPantalla() {
+    std::ifstream inv("../data/inventario.txt");
+    char linea[32];
+    std::cout << "\n--- Inventario ---\n";
+    bool vacio = true;
+    while (inv.getline(linea, 32)) {
+        if (linea[0] != '\0') {
+            std::cout << "- " << linea << "\n";
+            vacio = false;
+        }
+    }
+    if (vacio) std::cout << "(vacio)\n";
+    std::cout << "------------------\n";
+    inv.close();
+}
+
+void generarEvento(char mapa[12][23], int& habitacion, int& fila, int& columna, int nuevafila, int nuevacolumna) {
+    std::string archivoActual = "../data/Cuartos/Cuarto" + std::to_string(habitacion) + ".txt";
+    int filaGuardada = fila;
+    int columnaGuardada = columna;
+
+    static const char* nombres[]  = { "Tarjeta", "Cruz", "Nota1", "Nota2", "Moneda", "Escopeta", "Municion" };
+    static const char* imagObj[]  = { "KeyCard.png", "HolyCross.png", "Note1.png", "Note2.png", "Coin.png", "ShotGun.png", "Ammo.png" };
+    static const char* opciones[] = { "Well", "Cooler", "Seal" };
+    static const char* imagInt[]  = { "W.png", "C.png", "S.png" };
+    static char simbolos[]        = { 'W', 'C', 'S' };
+
+    static bool objetoUsado[7]      = { false, false, false, false, false, false, false};
+    static bool interaccionUsada[3] = { false, false, false };
+
+    int objDisp = 0;
+    int intDisp = 0;
+    int indicesObj[7];
+    int indicesInt[3];
+
+    for (int i = 0; i < 7; i++) {
+        if (!objetoUsado[i]) indicesObj[objDisp++] = i;
+    }
+    for (int i = 0; i < 3; i++) {
+        if (!interaccionUsada[i]) indicesInt[intDisp++] = i;
+    }
+
+    int resultado;
+    int r = rand() % 100;
+
+    if (objDisp > 0 && intDisp > 0) {
+        if      (r < 45) resultado = 0;
+        else if (r < 80) resultado = 1;
+        else             resultado = 2;
+
+    } else if (objDisp == 0 && intDisp > 0) {
+        if (r < 80) resultado = 1;
+        else        resultado = 2;
+
+    } else if (objDisp > 0 && intDisp == 0) {
+        if (r < 80) resultado = 0;
+        else        resultado = 2;
+
+    } else {
+        if (r < 50) resultado = 2;
+        else        resultado = 3;
+    }
+
+    if (resultado == 0) {
+        int idx = indicesObj[rand() % objDisp];
+        objetoUsado[idx] = true;
+
+        AbrirImagen(imagObj[idx]);
+        LimpiarPantalla();
+        std::cout << "Encontraste un/a " << nombres[idx] << "!\n";
+        std::cout << "Se ha agregado a tu inventario.\n";
+
+        std::ofstream inv("../data/inventario.txt", std::ios::app);
+        inv << nombres[idx] << "\n";
+        inv.close();
+
+        std::this_thread::sleep_for(std::chrono::seconds(2));
+        mapa[nuevafila][nuevacolumna] = '.';
+        mapa[filaGuardada][columnaGuardada] = 'P';
+        guardarMapa(archivoActual, mapa);
+        mostrarMapa(mapa);
+
+    } else if (resultado == 1) {
+        int idx = indicesInt[rand() % intDisp];
+        interaccionUsada[idx] = true;
+
+        AbrirImagen(imagInt[idx]);
+        LimpiarPantalla();
+        std::cout << "Encontraste un " << opciones[idx] << "!\n";
+        std::cout << "Presiona cualquier tecla para continuar...\n";
+        _getch();
+
+        mapa[nuevafila][nuevacolumna] = simbolos[idx];
+        mapa[filaGuardada][columnaGuardada] = 'P';
+        guardarMapa(archivoActual, mapa);
+        mostrarMapa(mapa);
+
+    } else if (resultado == 2) {
+        mapa[nuevafila][nuevacolumna] = '.';
+        mapa[filaGuardada][columnaGuardada] = 'P';
+        guardarMapa(archivoActual, mapa);
+        Monstruo(mapa, habitacion, fila, columna);
+
+    } else {
+        LimpiarPantalla();
+        std::cout << "Que raro... podria jurar que senti algo ahi.\n";
+        std::this_thread::sleep_for(std::chrono::seconds(2));
+        mapa[nuevafila][nuevacolumna] = '.';
+        mapa[filaGuardada][columnaGuardada] = 'P';
+        guardarMapa(archivoActual, mapa);
+        mostrarMapa(mapa);
+    }
+}
+
+bool VerificarObjetoEnInventario(const char* objeto) {
+    std::ifstream inventario("../data/inventario.txt");
+    char linea[32];
+    while (inventario.getline(linea, 32)) {
+        if (strcmp(linea, objeto) == 0) return true;
+    }
+    return false;
+}
+
+void interactuarConW(char mapa[12][23], int& habitacion, int& fila, int& columna, int nuevafila, int nuevacolumna) {
+    std::string archivoActual = "../data/Cuartos/Cuarto" + std::to_string(habitacion) + ".txt";
+    guardarMapa(archivoActual, mapa);
+    AbrirImagen("W.png");
+    LimpiarPantalla();
+    std::cout << "Selecciona un objeto para usar aqui:\n";
+    std::cout << "(Presiona 'b' para volver al mapa)\n";
+    mostrarInventarioEnPantalla();
+
+    std::string objeto;
+    std::cin >> objeto;
+
+    if (objeto == "b") {
+        LimpiarPantalla();
+        mostrarMapa(mapa);
+        return;
+    }
+    if (objeto == "Moneda") {
+        if (!VerificarObjetoEnInventario("Moneda")) {
+            LimpiarPantalla();
+            std::cout << "No tienes ese objeto en el inventario\n";
+            std::this_thread::sleep_for(std::chrono::seconds(2));
+            mostrarMapa(mapa);
+            return;
+        }
+        eliminarDeInventario("Moneda");
+        std::ofstream inv("../data/inventario.txt", std::ios::app);
+        inv << "MoldeParaLlave\n";
+        inv.close();
+        mapa[nuevafila][nuevacolumna] = '.';
+        mapa[fila][columna] = 'P';
+        guardarMapa(archivoActual, mapa);
+        LimpiarPantalla();
+        AbrirImagen("ImagenMolde.png");
+        std::cout << "Usaste la moneda. Haz recibido un MoldeParaLlave!\n";
+        std::this_thread::sleep_for(std::chrono::seconds(4));
+        mostrarMapa(mapa);
+    } else {
+        LimpiarPantalla();
+        std::cout << "No creo que pueda usar este objeto aqui\n";
+        std::this_thread::sleep_for(std::chrono::seconds(2));
+        mostrarMapa(mapa);
+    }
+}
+
+void interactuarConC(char mapa[12][23], int& habitacion, int& fila, int& columna, int nuevafila, int nuevacolumna) {
+    std::string archivoActual = "../data/Cuartos/Cuarto" + std::to_string(habitacion) + ".txt";
+    guardarMapa(archivoActual, mapa);
+    AbrirImagen("C.png");
+    LimpiarPantalla();
+    std::cout << "Selecciona un objeto para usar aqui:\n";
+    std::cout << "(Presiona 'b' para volver al mapa)\n";
+    mostrarInventarioEnPantalla();
+
+    std::string objeto;
+    std::cin >> objeto;
+
+    if (objeto == "b") {
+        LimpiarPantalla();
+        mostrarMapa(mapa);
+        return;
+    }
+    if (objeto == "MoldeConLiquido") {
+        if (!VerificarObjetoEnInventario("MoldeConLiquido")) {
+            LimpiarPantalla();
+            std::cout << "No tienes ese objeto en el inventario\n";
+            std::this_thread::sleep_for(std::chrono::seconds(2));
+            mostrarMapa(mapa);
+            return;
+        }
+        eliminarDeInventario("MoldeConLiquido");
+        std::ofstream inv("../data/inventario.txt", std::ios::app);
+        inv << "Llave\n";
+        inv.close();
+        mapa[nuevafila][nuevacolumna] = '.';
+        mapa[fila][columna] = 'P';
+        guardarMapa(archivoActual, mapa);
+        LimpiarPantalla();
+        std::cout << "Usaste el molde con liquido, se congelo en el Cooler y ahora tienes una llave \n";
+        std::this_thread::sleep_for(std::chrono::seconds(4));
+        mostrarMapa(mapa);
+    } else {
+        LimpiarPantalla();
+        std::cout << "No creo que pueda usar este objeto aqui\n";
+        std::this_thread::sleep_for(std::chrono::seconds(2));
+        mostrarMapa(mapa);
+    }
+}
+
+void interactuarConS(char mapa[12][23], int& habitacion, int& fila, int& columna, int nuevafila, int nuevacolumna) {
+    std::string archivoActual = "../data/Cuartos/Cuarto" + std::to_string(habitacion) + ".txt";
+    guardarMapa(archivoActual, mapa);
+    AbrirImagen("S.png");
+    LimpiarPantalla();
+    std::cout << "Selecciona un objeto para usar aqui:\n";
+    std::cout << "(Periona 'b' para volver al mapa)\n";
+    mostrarInventarioEnPantalla();
+
+    std::string objeto;
+    std::cin >> objeto;
+
+    if (objeto == "b") {
+        LimpiarPantalla();
+        mostrarMapa(mapa);
+        return;
+    }
+    if (objeto == "Cruz") {
+        if (!VerificarObjetoEnInventario("Cruz")) {
+            LimpiarPantalla();
+            std::cout << "No tienes ese objeto en el inventario\n";
+            std::this_thread::sleep_for(std::chrono::seconds(2));
+            mostrarMapa(mapa);
+            return;
+        }
+        eliminarDeInventario("Cruz");
+        std::ofstream inv("../data/inventario.txt", std::ios::app);
+        inv << "MercurioLiquido\n";
+        inv.close();
+        mapa[nuevafila][nuevacolumna] = '.';
+        mapa[fila][columna] = 'P';
+        guardarMapa(archivoActual, mapa);
+        LimpiarPantalla();
+        std::cout << "Usaste la cruz en el sello, haz recibido el MercurioLiquido\n";
+        AbrirImagen("LiquidMercury.png");
+        std::this_thread::sleep_for(std::chrono::seconds(4));
+        mostrarMapa(mapa);
+    } else {
+        LimpiarPantalla();
+        std::cout << "No creo que pueda usar este objeto aqui\n";
+        std::this_thread::sleep_for(std::chrono::seconds(2));
+        mostrarMapa(mapa);
+    }
+}
+
+void interactuarConD(char mapa[12][23], int& habitacion, int& fila, int& columna, int nuevafila, int nuevacolumna) {
+    std::string archivoActual = "../data/Cuartos/Cuarto" + std::to_string(habitacion) + ".txt";
+    guardarMapa(archivoActual, mapa);
+    AbrirImagen("puerta.png");
+    LimpiarPantalla();
+    if (ObjetosRequeridosPuerta > 0){
+        std::cout << "La puerta esta bloqueada\n";
+        std::cout << "Selecciona un objeto para usar\n";
+        std::cout << "(Presiona 'b' para volver al mapa)\n";
+        mostrarInventarioEnPantalla();
+
+        std::string objeto;
+        std::cin >> objeto;
+
+        if (objeto == "b") {
+            LimpiarPantalla();
+            mostrarMapa(mapa);
+            return;
+        }
+        if (objeto == "Llave") {
+            if (!VerificarObjetoEnInventario("Llave")) {
+                LimpiarPantalla();
+                std::cout << "No tienes ese objeto en el inventario\n";
+                std::this_thread::sleep_for(std::chrono::seconds(2));
+                mostrarMapa(mapa);
+                return;
+            }
+            eliminarDeInventario("Llave");
+            ObjetosRequeridosPuerta -= 1;
+            interactuarConD(mapa, habitacion, fila, columna, nuevafila, nuevacolumna);
+            return;
+        } else if (objeto == "Tarjeta") {
+            if (!VerificarObjetoEnInventario("Tarjeta")) {
+            LimpiarPantalla();
+            std::cout << "No tienes ese objeto en el inventario\n";
+            std::this_thread::sleep_for(std::chrono::seconds(2));
+            mostrarMapa(mapa);
+            return;
+        }
+            eliminarDeInventario("Tarjeta");
+            ObjetosRequeridosPuerta -= 1;
+            interactuarConD(mapa, habitacion, fila, columna, nuevafila, nuevacolumna);
+            return;
+        } else if (objeto == "EscopetaCargada") {
+            if (!VerificarObjetoEnInventario("EscopetaCargada")) {
+            LimpiarPantalla();
+            std::cout << "No tienes ese objeto en el inventario\n";
+            std::this_thread::sleep_for(std::chrono::seconds(2));
+            mostrarMapa(mapa);
+            return;
+        }
+            eliminarDeInventario("EscopetaCargada");
+            ObjetosRequeridosPuerta -= 1;
+            interactuarConD(mapa, habitacion, fila, columna, nuevafila, nuevacolumna);
+            return;
+        }
+        else {
+            LimpiarPantalla();
+            std::cout << "Este objeto no funciona aqui\n";
+            std::this_thread::sleep_for(std::chrono::seconds(2));
+            mapa[fila][columna] = 'P';
+            guardarMapa(archivoActual, mapa);
+            mostrarMapa(mapa);
+        }
+    } else {
+        std::string codigo = "1304530";
+        std::string input;
+        std::cout << "La puerta ahora pide un codigo, colocalo y dale enter, el codigo debe ser de 7 digitos\n";
+        std::cin >> input;
+        if (input == codigo){
+            LimpiarPantalla();
+            std::cout << "El codigo ha sido verificado, puede entrar\n";
+            std::this_thread::sleep_for(std::chrono::seconds(2));
+            mapa[nuevafila][nuevacolumna] = '.';
+            mapa[fila][columna] = 'P';
+            guardarMapa(archivoActual, mapa);
+            mostrarMapa(mapa);
+
+        } else {
+            LimpiarPantalla();
+            std::cout << "Ese no es el codigo, error\n";
+            std::this_thread::sleep_for(std::chrono::seconds(2));
+            mapa[fila][columna] = 'P';
+            guardarMapa(archivoActual, mapa);
+            mostrarMapa(mapa); 
+        }
+    }
+
+
+
+}
+
 void movimiento() {
 
     if (VidaJugador <= 0){
@@ -379,12 +652,83 @@ void movimiento() {
         int nuevacolumna = columna;
 
         if (tecla == 'm') {
-            PonerPausa(mapa, habitacion, fila, columna);
+            PonerPausa(mapa, habitacion);
             continue;
         }
+
+        if (tecla == 'i') {
+            std::string archivoActual = "../data/Cuartos/Cuarto" + std::to_string(habitacion) + ".txt";
+            guardarMapa(archivoActual, mapa);
+            LimpiarPantalla();
+            std::cout << "INVENTARIO- Que tienes para combinar?\n";
+            std::cout << "Porfavor escribe el objeto que desees combinar?\n";
+            std::cout << "(Presiona 'b' y enter para devolverte al mapa)\n";
+            mostrarInventarioEnPantalla();
+
+            std::string obj1;
+            std::cin >> obj1;
+
+            if (obj1 == "b") {
+                LimpiarPantalla();
+                mostrarMapa(mapa);
+                continue;
+            }
+
+            std::cout << "Y combinar con?:\n";
+            std::string obj2;
+            std::cin >> obj2;
+
+            bool combinacionValidaA = (obj1 == "MoldeParaLlave" && obj2 == "MercurioLiquido") ||
+                                     (obj1 == "MercurioLiquido" && obj2 == "MoldeParaLlave");
+            bool combinacionValidaB = (obj1 == "Escopeta" && obj2 == "Municion") ||
+                                     (obj1 == "Municion" && obj2 == "Escopeta");
+
+            if (combinacionValidaA) {
+                if ((!VerificarObjetoEnInventario("MoldeParaLlave")) || (!VerificarObjetoEnInventario("MercurioLiquido"))) {
+                    LimpiarPantalla();
+                    std::cout << "No tienes esos objetos en el inventario\n";
+                    std::this_thread::sleep_for(std::chrono::seconds(1));
+                    mostrarMapa(mapa);
+                    continue;
+                }
+                eliminarDeInventario("MoldeParaLlave");
+                eliminarDeInventario("MercurioLiquido");
+                std::ofstream inv("../data/inventario.txt", std::ios::app);
+                inv << "MoldeConLiquido\n";
+                inv.close();
+                std::cout << "Combinaste MercurioLiquido con MoldeParaLlave, recibiste un MoldeConLiquido!\n";
+                std::this_thread::sleep_for(std::chrono::seconds(3));
+                LimpiarPantalla();
+                mostrarMapa(mapa);
+            } else if (combinacionValidaB) {
+                if ((!VerificarObjetoEnInventario("Municion")) || (!VerificarObjetoEnInventario("Escopeta"))) {
+                    LimpiarPantalla();
+                    std::cout << "No tienes esos objetos en el inventario\n";
+                    std::this_thread::sleep_for(std::chrono::seconds(3));
+                    mostrarMapa(mapa);
+                    continue;
+                }
+                eliminarDeInventario("Escopeta");
+                eliminarDeInventario("Municion");
+                std::ofstream inv("../data/inventario.txt", std::ios::app);
+                inv << "EscopetaCargada\n";
+                inv.close();
+                std::cout << "Combinaste la Municion con la Escopeta haz recibido una EscopetaCargada!\n";
+                std::this_thread::sleep_for(std::chrono::seconds(3));
+                LimpiarPantalla();
+                mostrarMapa(mapa);
+            } else {
+                LimpiarPantalla();
+                std::cout << "Combinacion invalida.\n";
+                std::this_thread::sleep_for(std::chrono::seconds(3));
+                mostrarMapa(mapa);
+            }
+            continue;
+        }
+
         if (tecla == 'd') {
             nuevacolumna = columna+1;
-        }else if (tecla == 'a'){
+        } else if (tecla == 'a'){
             nuevacolumna = columna-1;
         } else if (tecla == 'w'){
             nuevafila = fila -1;
@@ -395,11 +739,7 @@ void movimiento() {
         if (mapa[nuevafila][nuevacolumna] == '#'){
             continue;
         }
-        
-        
 
-        //Instrucciones aqui:
-        //Tienes que poner que cuando el personaje toca un ? (ya te lo puse aqui abajo) pasen 3 cosas.
         if (mapa[nuevafila][nuevacolumna] == '?'){
             mapa[nuevafila][nuevacolumna] = '.';
         LimpiarPantalla();
@@ -418,8 +758,7 @@ void movimiento() {
         std::cout << "***********************\n";
         std::cout << "***********************\n";
         std::this_thread::sleep_for(std::chrono::seconds(1));
-        //agrega aca las probabilidades de monstruo, interaccion o objeto.
-            Monstruo(mapa, habitacion, fila, columna);
+            generarEvento(mapa, habitacion, fila, columna, nuevafila, nuevacolumna);
             continue;
         }
 
@@ -429,6 +768,93 @@ void movimiento() {
                 Boss();
                 continue;
                 }
+
+        if (mapa[nuevafila][nuevacolumna] == 'W') {
+            LimpiarPantalla();
+            reproducir("../data/Sonidos/Flash.wav");
+            std::this_thread::sleep_for(std::chrono::seconds(1));
+            std::cout << "***********************\n";
+            std::cout << "***********************\n";
+            std::cout << "***********************\n";
+            std::cout << "***********************\n";
+            std::cout << "***********************\n";
+            std::cout << "*********flash*********\n";
+            std::cout << "***********************\n";
+            std::cout << "***********************\n";
+            std::cout << "***********************\n";
+            std::cout << "***********************\n";
+            std::cout << "***********************\n";
+            std::cout << "***********************\n";
+            std::this_thread::sleep_for(std::chrono::seconds(1));
+
+            interactuarConW(mapa, habitacion, fila, columna, nuevafila, nuevacolumna);
+            continue;
+        }
+
+        if (mapa[nuevafila][nuevacolumna] == 'C') {
+            LimpiarPantalla();
+            reproducir("../data/Sonidos/Flash.wav");
+            std::this_thread::sleep_for(std::chrono::seconds(1));
+            std::cout << "***********************\n";
+            std::cout << "***********************\n";
+            std::cout << "***********************\n";
+            std::cout << "***********************\n";
+            std::cout << "***********************\n";
+            std::cout << "*********flash*********\n";
+            std::cout << "***********************\n";
+            std::cout << "***********************\n";
+            std::cout << "***********************\n";
+            std::cout << "***********************\n";
+            std::cout << "***********************\n";
+            std::cout << "***********************\n";
+            std::this_thread::sleep_for(std::chrono::seconds(1));
+            
+            interactuarConC(mapa, habitacion, fila, columna, nuevafila, nuevacolumna);
+            continue;
+        }
+
+        if (mapa[nuevafila][nuevacolumna] == 'S') {
+            LimpiarPantalla();
+            reproducir("../data/Sonidos/Flash.wav");
+            std::this_thread::sleep_for(std::chrono::seconds(1));
+            std::cout << "***********************\n";
+            std::cout << "***********************\n";
+            std::cout << "***********************\n";
+            std::cout << "***********************\n";
+            std::cout << "***********************\n";
+            std::cout << "*********flash*********\n";
+            std::cout << "***********************\n";
+            std::cout << "***********************\n";
+            std::cout << "***********************\n";
+            std::cout << "***********************\n";
+            std::cout << "***********************\n";
+            std::cout << "***********************\n";
+            std::this_thread::sleep_for(std::chrono::seconds(1));
+            
+            interactuarConS(mapa, habitacion, fila, columna, nuevafila, nuevacolumna);
+            continue;
+        }
+
+        if (mapa[nuevafila][nuevacolumna] == 'D') {
+            LimpiarPantalla();
+            reproducir("../data/Sonidos/Flash.wav");
+            std::this_thread::sleep_for(std::chrono::seconds(1));
+            std::cout << "***********************\n";
+            std::cout << "***********************\n";
+            std::cout << "***********************\n";
+            std::cout << "***********************\n";
+            std::cout << "***********************\n";
+            std::cout << "*********flash*********\n";
+            std::cout << "***********************\n";
+            std::cout << "***********************\n";
+            std::cout << "***********************\n";
+            std::cout << "***********************\n";
+            std::cout << "***********************\n";
+            std::cout << "***********************\n";
+            std::this_thread::sleep_for(std::chrono::seconds(1));
+            interactuarConD(mapa, habitacion, fila, columna, nuevafila, nuevacolumna);
+            continue;
+        }
 
         char celdaDestino = mapa[nuevafila][nuevacolumna];
         bool cambio = false;
@@ -484,14 +910,14 @@ void ResetearCuartos(){
     }
 }
 
-void PonerPausa(char mapa[12][23], int habitacion, int fila, int columna){
+void PonerPausa(char mapa[12][23], int habitacion){
     std::string archivoActual = "../data/Cuartos/Cuarto" + std::to_string(habitacion) + ".txt";
     guardarMapa(archivoActual, mapa);
 
     LimpiarPantalla();
-    std::cout <<"PAUSE\n";
-    std::cout <<"Press 'j' to continue playing or press 's' to exit\n";
-    std::cout <<"Warning, if you choose to exit now your progress will not be saved!\n";
+    std::cout <<"PAUSA\n";
+    std::cout <<"Presiona 'j' para seguir jugando o 's' para salir del juego\n";
+    std::cout <<"Advertencia, si sales del juego todo tu progreso va a reiniciarse!\n";
 
     while (true) {
         char tecla = _getch();
@@ -617,7 +1043,7 @@ void Correr(char mapa[12][23], int& habitacion, int& fila, int& columna) {
     std::cout << "\n";
     std::cout << "Tienes entre 1 a 2.5 segundos para presionar este numero,\n";
     std::cout << "\n";
-    std::cout << "Si no presionas este numero a tiempo, te quitaran 25 puntos de vida y te tocara pelear con el fantasma,\n";
+    std::cout << "Si no presionas este numero a tiempo, te quitaran 20 puntos de vida y te tocara pelear con el fantasma,\n";
     std::cout << "\n";
     std::cout << "Si logras poner todas las letras que salgan por 10 segundos, vas a escapar o te tocara pelear\n";
     std::cout << "\n";
@@ -638,17 +1064,17 @@ void Correr(char mapa[12][23], int& habitacion, int& fila, int& columna) {
 
         if (!_kbhit() || _getch() != (n + '0')) {
             LimpiarPantalla();
-            VidaJugador -= 25;
+            VidaJugador -= 20;
             Ataque();
             std::this_thread::sleep_for(std::chrono::milliseconds(1600));
-            Fight(mapa, habitacion, fila, columna, vidaM, 10);
+            Fight(mapa, habitacion, fila, columna, vidaM, 9);
             return;
         }
         tiempoTotal += numero;
     }
 
     int r = rand() % 100;
-    if (r < 50) Fight(mapa, habitacion, fila, columna, vidaM, 10);
+    if (r < 50) Fight(mapa, habitacion, fila, columna, vidaM, 9);
     else        Flee(mapa, habitacion, fila, columna);
 }
 
@@ -850,11 +1276,11 @@ void Fight(char mapa[12][23], int& habitacion, int& fila, int& columna, int& vid
     std::cout << "\n";
     std::cout << "Si alumbras y ves un pasillo vacio, el fantasma esta en estado pasivo, si ves una cara a lo lejos esta en estado activo\n";
     std::cout << "\n";
-    std::cout << "Si ves ya la cara del fantasma completamente, debes presionar 'g' apenas alumbres para ahuyentarlo, tienes muy poco tiempo\n";
+    std::cout << "Si ves ya la cara del fantasma completamente, debes presionar 'g' una vez apenas alumbres para ahuyentarlo, tienes muy poco tiempo\n";
     std::cout << "\n";
-    std::cout << "Si no lo haces a tiempo el fantasma te atacará, si presionas 'g' cuando no debes, tambien te atacara\n";
+    std::cout << "Si no lo haces a tiempo el fantasma te atacara, si presionas 'g' cuando no debes o lo presionas dos veces, tambien te atacara\n";
     std::cout << "\n";
-    std::cout << "Solo puedes alumbrar 10 veces maximo, si lo haces mas te quedaras sin flashes, el fantasma te quitara 35 de vida y se ira\n";
+    std::cout << "Solo puedes alumbrar 10 veces maximo, si lo haces mas te quedaras sin flashes, el fantasma te quitara 25 de vida y se ira\n";
     std::cout << "\n";
     std::cout << "Presiona 'a' para comenzar, suerte...\n";
 
@@ -917,7 +1343,7 @@ void Fight(char mapa[12][23], int& habitacion, int& fila, int& columna, int& vid
             enCombate.store(false);
             estadoThread.join();
 
-            VidaJugador -= 35;
+            VidaJugador -= 25;
 
             if (VidaJugador <= 0){
                 Morir();
@@ -944,7 +1370,7 @@ void Fight(char mapa[12][23], int& habitacion, int& fila, int& columna, int& vid
             else                        SinVer(VidaJugador, vidaenemigo, flashes);
 
             bool gPresionado = false;
-            auto inicio = std::chrono::steady_clock::now();
+            TimePoint inicio = std::chrono::steady_clock::now();
             while (std::chrono::steady_clock::now() - inicio < std::chrono::seconds(1)) {
                 if (_kbhit()) { char t2 = _getch(); if (t2 == 'g') { gPresionado = true; break; } }
                 std::this_thread::sleep_for(std::chrono::milliseconds(10));
@@ -996,7 +1422,6 @@ void Rendirse(char mapa[12][23], int& habitacion, int& fila, int& columna){
 }
 
 void Morir(){
-    parar_todos();
     reproducir("../data/Sonidos/muerte.wav");
     LimpiarPantalla();
     std::cout << "GAME OVER; Haz Muerto\n";
@@ -1021,6 +1446,13 @@ void Morir(){
     std::cout << "Wi.~!X$?!-~    : ?$$$B$Wu(\"**$RM!\n";
     std::cout << "$R@i.~~ !     :   ~$$$$$B$$en:``\n";
     std::cout << "?MXT@Wx.~    :     ~\"##*$$$$M~\n";
+    std::cout << "\n";
+    std::cout << "Presione la tecla a para abandonar el juego\n";
+    char tecla;
+
+    do {
+        tecla = _getch();
+    } while (tecla != 'a');
     VidaJugador = 100;
     ResetearCuartos();
     exit(0);
@@ -1065,7 +1497,7 @@ void Flee(char (mapa)[12][23], int& habitacion, int& fila, int& columna){
     LimpiarPantalla();
     parar_todos();
     reproducir("../data/Sonidos/horror.wav");
-    std::cout << "You managed to flee!\n";
+    std::cout << "Lograste escapar!\n";
     std::this_thread::sleep_for(std::chrono::seconds(1));
     LimpiarPantalla();
     mostrarMapa(mapa);
@@ -1076,15 +1508,15 @@ void Monstruo(char mapa[12][23], int &habitacion, int& fila, int& columna){
         Morir();
         return;
     }
-    ImagesMonstruos img;
-    std::string lista[] = {img.a, img.b, img.c, img.d, img.e, img.f};
-    std::string imagen = lista[rand() % 6];
+    static const char* lista[] = {"monster1.png","monster2.png","monster3.png",
+                               "monster4.png","monster5.png","monster6.png"};
+    const char* imagen = lista[rand() % 6];
 
     std::string archivoActual = "../data/Cuartos/Cuarto" + std::to_string(habitacion) + ".txt";
     guardarMapa(archivoActual, mapa);
     LimpiarPantalla();
     AbrirImagen(imagen);
-    std::cout << "You have found a Ghost!\n";
+    std::cout << "Haz encontrado un fantasma!\n";
     reproducir("../data/Sonidos/MonstruoOst.wav");
     std::this_thread::sleep_for(std::chrono::seconds(2));
     LimpiarPantalla();
@@ -1096,7 +1528,7 @@ void Monstruo(char mapa[12][23], int &habitacion, int& fila, int& columna){
     MonstruoCara();
     std::cout << "\n";
     std::cout << "\n";
-    std::cout << "Player's life: " << VidaJugador << "\n";
+    std::cout << "Vida del jugador: " << VidaJugador << "\n";
     std::cout << "\n";
     std::cout << "              |_______Jugador________|\n";
     std::cout << "\n";
@@ -1113,7 +1545,7 @@ void Monstruo(char mapa[12][23], int &habitacion, int& fila, int& columna){
             Correr(mapa, habitacion, fila, columna);
             return;
         } else if (tecla == 'f'){
-            Fight(mapa, habitacion, fila, columna, vidaM, 10);
+            Fight(mapa, habitacion, fila, columna, vidaM, 9);
             return;
         } else if (tecla == 'b'){
             Rendirse(mapa, habitacion, fila, columna);
@@ -1153,39 +1585,39 @@ void Boss(){
     AbrirImagen("boss.png");
     LimpiarPantalla();
     
-    std::cout << "INSTRUCCIONES FINALES\n";
+    std::cout << "INSTRUCCIONES PARA SOBREVIVIR\n";
     std::cout << "\n";
 
     std::cout << "El jefe tiene 3 fases.\n";
-    std::cout << "Cada vez que te golpee, cambiara de fase.\n";
-    std::cout << "Sobrevive lo suficiente... y comenzara la batalla final.\n";
+    std::cout << "Cada vez que te golpee o se acabe el tiempo, cambiara de fase.\n";
+    std::cout << "Sobrevive lo suficiente... y podras vencerlo\n";
     std::cout << "\n";
 
     std::cout << "FASE 1 - NO DEJES DE MOVERTE\n";
-    std::cout << "Si escuchas musica, corre presionando C.\n";
-    std::cout << "Cuando la musica se detenga, presiona P para quedarte quieto.\n";
+    std::cout << "Si escuchas musica, corre presionando 'c'.\n";
+    std::cout << "Cuando la musica se detenga, presiona 'p' para quedarte quieto.\n";
     std::cout << "\n";
     std::cout << "Si te mueves cuando debes parar... o te detienes cuando debes correr...\n";
-    std::cout << "perderas vida.\n";
+    std::cout << "El jefe te atacara\n";
     std::cout << "\n";
 
     std::cout << "FASE 2 - REPITE EXACTAMENTE\n";
     std::cout << "El jefe mostrara palabras en pantalla.\n";
     std::cout << "Debes escribirlas exactamente igual y presionar ENTER.\n";
+    std::cout << "Si cometes un error no podras deshacerlo, ten cuidado";
     std::cout << "\n";
     std::cout << "Mayusculas, simbolos y letras deben ser identicos.\n";
-    std::cout << "Un error te costara vida.\n";
     std::cout << "\n";
 
     std::cout << "FASE 3 - SIGUE EL LATIDO\n";
     std::cout << "Veras un corazon en pantalla.\n";
     std::cout << "Cada vez que lata, debes presionar L antes de que deje de latir.\n";
     std::cout << "\n";
-    std::cout << "Si fallas el ritmo... perderas vida.\n";
+    std::cout << "Si fallas el ritmo... el jefe te atacara.\n";
     std::cout << "\n";
 
     std::cout << "Final -\n";
-    std::cout << "Sobrevive por 7 minutos, el jefe se cansara, luego usa tu escopeta para rematarlo\n";
+    std::cout << "Sobrevive por 6 minutos, el jefe se cansara, luego usa tu escopeta para rematarlo\n";
     std::cout << "\n";
     std::cout << "Derrotalo... libera a las almas... y escapa.\n";
     std::cout << "\n";
@@ -1203,11 +1635,11 @@ void Boss(){
 
 void ElegirFase() {
 
-    int tiempoTotal = 8 * 60;
-    auto inicio = std::chrono::steady_clock::now();
+    int tiempoTotal = 6 * 60;
+    TimePoint inicio = std::chrono::steady_clock::now();
 
     while (true) {
-        auto ahora = std::chrono::steady_clock::now();
+        TimePoint ahora = std::chrono::steady_clock::now();
         int segundosPasados = std::chrono::duration_cast<std::chrono::seconds>(ahora - inicio).count();
 
         if (segundosPasados >= tiempoTotal) {
@@ -1237,11 +1669,11 @@ bool Fase1() {
     std::cout << "Cuidado con la musica :)\n";
 
     int tiempoTotal = rand() % (40 - 30 + 1) + 30;
-    auto inicio = std::chrono::steady_clock::now();
+    TimePoint inicio = std::chrono::steady_clock::now();
 
     while (true){
-        auto ahora = std::chrono::steady_clock::now();
-        auto segundosPasados = std::chrono::duration_cast<std::chrono::seconds>(ahora - inicio).count();
+        TimePoint ahora = std::chrono::steady_clock::now();
+        long long segundosPasados = std::chrono::duration_cast<std::chrono::seconds>(ahora - inicio).count();
 
         if (segundosPasados >= tiempoTotal) {
             std::cout << "Fase terminada\n";
@@ -1251,11 +1683,11 @@ bool Fase1() {
         reproducir("../data/Sonidos/Dance.wav");
 
         bool presionoC = false;
-        auto tiempoC = std::chrono::steady_clock::now();
+        TimePoint tiempoC = std::chrono::steady_clock::now();
 
         while (true) {
 
-            auto actual = std::chrono::steady_clock::now();
+            TimePoint actual = std::chrono::steady_clock::now();
             double tiempoPasado = std::chrono::duration<double>(actual - tiempoC).count();
 
             if (_kbhit()) {
@@ -1283,11 +1715,11 @@ bool Fase1() {
         parar_todos();
 
         bool presionoP = false;
-        auto tiempoP = std::chrono::steady_clock::now();
+        TimePoint tiempoP = std::chrono::steady_clock::now();
 
         while (true) {
 
-            auto actual = std::chrono::steady_clock::now();
+            TimePoint actual = std::chrono::steady_clock::now();
             double tiempoPasado = std::chrono::duration<double>(actual - tiempoP).count();
 
             if (_kbhit()) {
@@ -1332,11 +1764,11 @@ bool Fase2() {
 
     int tiempoTotal = rand() % (30 - 20 + 1) + 20;
 
-    auto inicioFase = std::chrono::steady_clock::now();
+    TimePoint inicioFase = std::chrono::steady_clock::now();
 
     while (true) {
 
-        auto ahora = std::chrono::steady_clock::now();
+        TimePoint ahora = std::chrono::steady_clock::now();
 
         int segundosPasados = std::chrono::duration_cast<std::chrono::seconds>(
             ahora - inicioFase
@@ -1354,13 +1786,13 @@ bool Fase2() {
 
         int tiempoRespuesta = rand() % (10 - 6 + 1) + 6;
 
-        auto inicioRespuesta = std::chrono::steady_clock::now();
+        TimePoint inicioRespuesta = std::chrono::steady_clock::now();
 
         std::string input = "";
         bool tiempoAgotado = false;
 
         while (true) {
-            auto ahoraResp = std::chrono::steady_clock::now();
+            TimePoint ahoraResp = std::chrono::steady_clock::now();
             int tiempoPasado = std::chrono::duration_cast<std::chrono::seconds>(
                 ahoraResp - inicioRespuesta).count();
 
@@ -1375,7 +1807,7 @@ bool Fase2() {
                     input += tecla;
                     std::cout << tecla;
                 }
-                if (input == palabraActual) break;  // ← coincide → siguiente palabra
+                if (input == palabraActual) break;
             }
         }
 
@@ -1425,7 +1857,7 @@ bool Fase3() {
             std::chrono::steady_clock::time_point actual = std::chrono::steady_clock::now();
             double tiempoVentana = std::chrono::duration_cast<std::chrono::milliseconds>(actual - inicioPequeno).count() / 1000.0;
 
-            if (tiempoVentana >= 1.0) { // Duración del corazón pequeño
+            if (tiempoVentana >= 1.0) {
                 break;
             }
 
@@ -1467,7 +1899,7 @@ bool Fase3() {
             std::chrono::steady_clock::time_point actual = std::chrono::steady_clock::now();
             double tiempoVentana = std::chrono::duration_cast<std::chrono::milliseconds>(actual - inicioGrande).count() / 1000.0;
 
-            if (tiempoVentana >= 0.5) { // Duración del corazón grande
+            if (tiempoVentana >= 0.5) {
                 break;
             }
 
@@ -1508,10 +1940,10 @@ void FinalBueno(){
     reproducir("../data/Sonidos/goodending.wav");
     LimpiarPantalla();
 
-    std::cout << "El jefe se agoto, aprovechaste la situación y le pegaste varios escopetazos en la cara\n\n";
+    std::cout << "El jefe se agoto, aprovechaste la situacion y le pegaste varios escopetazos en la cara\n\n";
     std::this_thread::sleep_for(std::chrono::seconds(4));
 
-    std::cout << "El último escopetazo sono, y el jefe desapareció en la oscuridad como si nunca hubiera existido.\n\n";
+    std::cout << "El ultimo escopetazo sono, y el jefe desapareció en la oscuridad como si nunca hubiera existido.\n\n";
     std::this_thread::sleep_for(std::chrono::seconds(4));
 
     std::cout << "Las cadenas del lugar se rompieron una a una, y los espiritus atrapados comenzaron a liberarse, elevandose en silencio hacia la luz.\n\n";
@@ -1523,7 +1955,7 @@ void FinalBueno(){
     std::cout << "Una pared se derrumbo, era tu via de escape\n\n";
     std::this_thread::sleep_for(std::chrono::seconds(4));
 
-    std::cout << "Esta vez… había salida.\n\n";
+    std::cout << "Esta vez habia salida.\n\n";
     std::this_thread::sleep_for(std::chrono::seconds(4));
 
     std::cout << "---\n\n";
@@ -1532,16 +1964,16 @@ void FinalBueno(){
     std::cout << "Regresaste a casa.\n\n";
     std::this_thread::sleep_for(std::chrono::seconds(4));
 
-    std::cout << "Tu familia te abrazó sin preguntar nada, como si el tiempo perdido no importara mas.\n\n";
+    std::cout << "Tu familia te abrazo sin preguntar nada, como si el tiempo perdido no importara mas.\n\n";
     std::this_thread::sleep_for(std::chrono::seconds(4));
 
-    std::cout << "Solo importaba que habías vuelto.\n\n";
+    std::cout << "Solo importaba que habias vuelto.\n\n";
     std::this_thread::sleep_for(std::chrono::seconds(4));
     std::cout << "---\n\n";
     std::cout << "Días despues subiste las fotos a internet.\n\n";
     std::this_thread::sleep_for(std::chrono::seconds(4));
 
-    std::cout << "Nadie creyó la historia al principio.\n\n";
+    std::cout << "Nadie creyo la historia al principio.\n\n";
     std::this_thread::sleep_for(std::chrono::seconds(4));
 
     std::cout << "Pero tu historia comenzo a viralizarse.\n\n";
@@ -1555,7 +1987,8 @@ void FinalBueno(){
 
     std::cout << "Y el mundo entero lo supo.\n\n";
     std::this_thread::sleep_for(std::chrono::seconds(4));
-
+    LimpiarPantalla();
+    std::this_thread::sleep_for(std::chrono::seconds(1));
     std::cout << "                                                                                                  .88888.                     888888ba   \n";
     std::cout << "                                                                                                 d8'   `88                    88    `8b  \n";
     std::cout << "                                                                                                 88        .d8888b. .d8888b.  88     88  \n";
@@ -1624,8 +2057,8 @@ void FinalMalo(){
     std::cout << "Ya no eres tu quien actua, solo un espectador atrapado dentro de tu mente...\n\n";
     std::cout << "Ves como destruye todo lo que amas delante de tus ojos...\n\n";
     std::cout << "Tu cuerpo se mueve sin tu permiso, guiado por una voluntad oscura...\n\n";
-    std::cout << "Los gritos se apagan lentamente mientras todo cae en desesperación...\n\n";
-    std::cout << "Y tú permaneces consciente, sin poder hacer nada para detenerlo...\n\n";
+    std::cout << "Los gritos se apagan lentamente mientras todo cae en desesperacion...\n\n";
+    std::cout << "Y tu permaneces consciente, sin poder hacer nada para detenerlo...\n\n";
     std::cout << "\n";
     std::cout << "X-X-X-X-X-X-X-X-X-X-X-X-X-X-X-X-X-X-X-X-X-X-X-X-X-X-X-X-X-X-X-X-X-X-X-X-X-X-X\n";
     std::cout << "|                           ,,'``````````````',,                            |\n";
@@ -1664,12 +2097,12 @@ void FinalMalo(){
     std::cout << "Las almas no encontraron descanso...\n\n";
     std::cout << "Quedaron atrapadas en los pasillos interminables del hotel, repitiendo sus ultimos pasos una y otra vez...\n\n";
     std::cout << "Susurros vacios recorren las paredes, como si el lugar mismo estuviera vivo...\n\n";
-    std::cout << "Incluso los disfraces usados para alegrar a los niños ahora están corrompidos...\n\n";
-    std::cout << "Las mascaras sonríen sin vida, pero dentro de ellas algo aun observa...\n\n";
+    std::cout << "Incluso los disfraces usados para alegrar a los niños ahora estan corrompidos...\n\n";
+    std::cout << "Las mascaras sonrien sin vida, pero dentro de ellas algo aun observa...\n\n";
     std::cout << "Cada vez que el hotel se queda en silencio, se escuchan risas apagadas desde lo profundo...\n\n";
     std::cout << "No son recuerdos... son almas atrapadas, incapaces de escapar de este lugar...\n\n";
     std::cout << "Y el hotel sigue abandonado... como si nada hubiera pasado...\n\n";
-    std::this_thread::sleep_for(std::chrono::seconds(15));
+    std::this_thread::sleep_for(std::chrono::seconds(20));
     std::cout << "\n";
     std::cout << "                                                                                                    888888ba  .d888888  888888ba  \n";
     std::cout << "                                                                                                    88    `8b d8'    88 88    `8b \n";
