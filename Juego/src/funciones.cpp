@@ -327,19 +327,19 @@ void generarEvento(char mapa[12][23], int& habitacion, int& fila, int& columna, 
 
     if (objDisp > 0 && intDisp > 0) {
         if      (r < 45) resultado = 0;
-        else if (r < 80) resultado = 1;
+        else if (r < 70) resultado = 1;
         else             resultado = 2;
 
     } else if (objDisp == 0 && intDisp > 0) {
-        if (r < 80) resultado = 1;
+        if (r < 60) resultado = 1;
         else        resultado = 2;
 
     } else if (objDisp > 0 && intDisp == 0) {
-        if (r < 80) resultado = 0;
+        if (r < 50) resultado = 0;
         else        resultado = 2;
 
     } else {
-        if (r < 50) resultado = 2;
+        if (r < 30) resultado = 2;
         else        resultado = 3;
     }
 
@@ -436,7 +436,6 @@ void interactuarConW(char mapa[12][23], int& habitacion, int& fila, int& columna
         mapa[fila][columna] = 'P';
         guardarMapa(archivoActual, mapa);
         LimpiarPantalla();
-        AbrirImagen("ImagenMolde.png");
         std::cout << "Usaste la moneda. Haz recibido un MoldeParaLlave!\n";
         std::this_thread::sleep_for(std::chrono::seconds(4));
         mostrarMapa(mapa);
@@ -526,7 +525,6 @@ void interactuarConS(char mapa[12][23], int& habitacion, int& fila, int& columna
         guardarMapa(archivoActual, mapa);
         LimpiarPantalla();
         std::cout << "Usaste la cruz en el sello, haz recibido el MercurioLiquido\n";
-        AbrirImagen("LiquidMercury.png");
         std::this_thread::sleep_for(std::chrono::seconds(4));
         mostrarMapa(mapa);
     } else {
