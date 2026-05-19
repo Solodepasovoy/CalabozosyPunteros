@@ -436,6 +436,7 @@ void interactuarConW(char mapa[12][23], int& habitacion, int& fila, int& columna
         mapa[fila][columna] = 'P';
         guardarMapa(archivoActual, mapa);
         LimpiarPantalla();
+        AbrirImagen("ImagenMolde.txt");
         std::cout << "Usaste la moneda. Haz recibido un MoldeParaLlave!\n";
         std::this_thread::sleep_for(std::chrono::seconds(4));
         mostrarMapa(mapa);
@@ -524,6 +525,7 @@ void interactuarConS(char mapa[12][23], int& habitacion, int& fila, int& columna
         mapa[fila][columna] = 'P';
         guardarMapa(archivoActual, mapa);
         LimpiarPantalla();
+        AbrirImagen("LiquidMercury");
         std::cout << "Usaste la cruz en el sello, haz recibido el MercurioLiquido\n";
         std::this_thread::sleep_for(std::chrono::seconds(4));
         mostrarMapa(mapa);
