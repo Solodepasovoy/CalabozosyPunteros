@@ -2,11 +2,22 @@
 #include <string>
 #include <iostream>
 #include <fstream>
-#include <conio.h>
 #include <thread>
 #include <chrono>
 #include <atomic>
 #include <cstdlib>
+#include <cstring>
+
+#ifdef _WIN32
+    #include <conio.h>
+#else
+    #include <termios.h>
+    #include <unistd.h>
+    #include <fcntl.h>
+
+    int _getch();
+    int _kbhit();
+#endif
 
 extern int VidaJugador;
 extern int ObjetosRequeridosPuerta;
@@ -26,7 +37,7 @@ void movimiento();
 void ResetearCuartos();
 void PonerPausa(char mapa[12][23], int habitacion);
 void Monstruo(char mapa[12][23], int& habitacion, int& fila, int& columna);
-void Correr(char mapa[12][23], int& habitacion, int& fila, int& columna);
+void Correr(char mapa[12][23], int& habitacion, int& fila, int& columna, int& vidaM);
 void Fight(char mapa[12][23], int& habitacion, int& fila, int& columna, int& vidaenemigo, int maximosflashes);
 void Flee(char mapa[12][23], int& habitacion, int& fila, int& columna);
 void Rendirse(char mapa[12][23], int& habitacion, int& fila, int& columna);

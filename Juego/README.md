@@ -119,6 +119,13 @@ Desarrolladas por Tomás Espinel Cohen. Las innovaciones que pudieron implementa
 ### Resolver Warnings
 Me salian Warnings referentes a #pragma comment, fila y columna sin usar en PonerPausa() y libreria winmm faltante. Le pedimos a la IA que significaba cada Warning y la raiz del problema para solucionarla nosotros.
 
+### Usar conio.h solamente si se esta en windows
+Al probarlo en linux no me compilaba, era porque el conio.h solo funcionaba en windows pero no sabia como cambiarlo para que solamente funcione en windows y no en los demas, entonces usamos IA para que nos diga como poner las declaraciones de funciones que estaban en conio.h para que funcionen en los demas sistemas
+
+### Como compilar en linux 
+La IA no enseño a usar aplay para reproducir los sonidos en linux, usar lld para usar el linker alternativo en vez del default de linux (con el default se nos trababa) y finalmente convertir archivos de mapa de CP437 a UTF-8.
+
 ## Posdata
 Se que el repositorio se llama Calabozos y Punteros pero le decidimos cambiar el nombre a Flash or Die despues.
+Tambien en linux se debe instalar a play con "sudo apt install alsa-utils -y"
 

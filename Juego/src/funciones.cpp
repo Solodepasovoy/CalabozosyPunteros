@@ -1,5 +1,35 @@
 #include "funciones.h"
 
+#ifndef _WIN32
+    int _getch() {
+        struct termios oldt, newt;
+        tcgetattr(STDIN_FILENO, &oldt);
+        newt = oldt;
+        newt.c_lflag &= ~(ICANON | ECHO);
+        tcsetattr(STDIN_FILENO, TCSANOW, &newt);
+        int ch = getchar();
+        tcsetattr(STDIN_FILENO, TCSANOW, &oldt);
+        return ch;
+    }
+
+    int _kbhit() {
+        struct termios oldt, newt;
+        tcgetattr(STDIN_FILENO, &oldt);
+        newt = oldt;
+        newt.c_lflag &= ~(ICANON | ECHO);
+        tcsetattr(STDIN_FILENO, TCSANOW, &newt);
+        fcntl(STDIN_FILENO, F_SETFL, O_NONBLOCK);
+        int ch = getchar();
+        tcsetattr(STDIN_FILENO, TCSANOW, &oldt);
+        fcntl(STDIN_FILENO, F_SETFL, 0);
+        if (ch != EOF) {
+            ungetc(ch, stdin);
+            return 1;
+        }
+        return 0;
+    }
+#endif
+
 
 struct Conexion {
     int habitacionOrigen;
@@ -436,7 +466,7 @@ void interactuarConW(char mapa[12][23], int& habitacion, int& fila, int& columna
         mapa[fila][columna] = 'P';
         guardarMapa(archivoActual, mapa);
         LimpiarPantalla();
-        AbrirImagen("ImagenMolde.txt");
+        AbrirImagen("ImagenMolde.png");
         std::cout << "Usaste la moneda. Haz recibido un MoldeParaLlave!\n";
         std::this_thread::sleep_for(std::chrono::seconds(4));
         mostrarMapa(mapa);
@@ -525,7 +555,7 @@ void interactuarConS(char mapa[12][23], int& habitacion, int& fila, int& columna
         mapa[fila][columna] = 'P';
         guardarMapa(archivoActual, mapa);
         LimpiarPantalla();
-        AbrirImagen("LiquidMercury");
+        AbrirImagen("LiquidMercury.png");
         std::cout << "Usaste la cruz en el sello, haz recibido el MercurioLiquido\n";
         std::this_thread::sleep_for(std::chrono::seconds(4));
         mostrarMapa(mapa);
@@ -1036,7 +1066,7 @@ void CorrerASCI(int num){
     std::cout << "         !!!!!!!!!!!!!!!!!PRESIONA EL NUMERO " << num << "\n";
     }
 
-void Correr(char mapa[12][23], int& habitacion, int& fila, int& columna) {
+void Correr(char mapa[12][23], int& habitacion, int& fila, int& columna, int& vidaM) {
     std::cout << "Instrucciones:\n";
     std::cout << "\n";
     std::cout << "Va a aparecer el fantasma en pantalla y te va a aparecer el numero que debes presionar para correr,\n";
@@ -1051,9 +1081,7 @@ void Correr(char mapa[12][23], int& habitacion, int& fila, int& columna) {
     char tecla;
     do { tecla = _getch(); } while (tecla != 'a');
     reproducir("../data/Sonidos/correr.wav");
-    std::this_thread::sleep_for(std::chrono::seconds(1));
     int tiempoTotal = 0;
-    int vidaM = rand() % 31 + 10;
 
     while (tiempoTotal < 10000) {
         int n = rand() % 10;
@@ -1264,6 +1292,33 @@ void SinVer(int vidaJugador, int vidaenemigo, int flashes){
     std::cout << "88888888888888888888888888888888888888888888888888888888888888888888888888888888888888\n";
 }
 
+void hiloEstado(std::atomic<int>* estado, std::atomic<bool>* enCombate, std::atomic<bool>* ataqueAutomatico) {
+    while (enCombate->load()) {
+        int tp  = (rand() % 9  + 7)  * 1000;
+        int ta  = (rand() % 5  + 4)  * 1000;
+        int tag = (rand() % 3  + 4)  * 1000;
+
+        estado->store(1);
+        for (int i = 0; i < tp / 50 && enCombate->load(); i++)
+            std::this_thread::sleep_for(std::chrono::milliseconds(50));
+        if (!enCombate->load()) break;
+
+        estado->store(2);
+        for (int i = 0; i < ta / 50 && enCombate->load(); i++)
+            std::this_thread::sleep_for(std::chrono::milliseconds(50));
+        if (!enCombate->load()) break;
+
+        estado->store(3);
+        for (int i = 0; i < tag / 50 && enCombate->load(); i++)
+            std::this_thread::sleep_for(std::chrono::milliseconds(50));
+        if (!enCombate->load()) break;
+
+        if (estado->load() == 3) {
+            ataqueAutomatico->store(true);
+        }
+    }
+}
+
 void Fight(char mapa[12][23], int& habitacion, int& fila, int& columna, int& vidaenemigo, int maximosflashes) {
     LimpiarPantalla();
     std::cout << "VAS A PELEAR CONTRA EL FANTASMA!\n";
@@ -1291,32 +1346,7 @@ void Fight(char mapa[12][23], int& habitacion, int& fila, int& columna, int& vid
     std::atomic<int>  estado(1);
     std::atomic<bool> enCombate(true);
     std::atomic<bool> ataqueAutomatico(false);
-    std::thread estadoThread([&]() {
-        while (enCombate.load()) {
-            int tp  = (rand() % 9  + 7)  * 1000;
-            int ta  = (rand() % 5  + 4)  * 1000;
-            int tag = (rand() % 3  + 4)  * 1000;
-
-            estado.store(1);
-            for (int i = 0; i < tp / 50 && enCombate.load(); i++)
-                std::this_thread::sleep_for(std::chrono::milliseconds(50));
-            if (!enCombate.load()) break;
-
-            estado.store(2);
-            for (int i = 0; i < ta / 50 && enCombate.load(); i++)
-                std::this_thread::sleep_for(std::chrono::milliseconds(50));
-            if (!enCombate.load()) break;
-
-            estado.store(3);
-            for (int i = 0; i < tag / 50 && enCombate.load(); i++)
-                std::this_thread::sleep_for(std::chrono::milliseconds(50));
-            if (!enCombate.load()) break;
-
-            if (estado.load() == 3) {
-                ataqueAutomatico.store(true);
-            }
-        }
-    });
+    std::thread estadoThread(hiloEstado, &estado, &enCombate, &ataqueAutomatico);
 
     SinVer(VidaJugador, vidaenemigo, flashes);
 
@@ -1542,7 +1572,7 @@ void Monstruo(char mapa[12][23], int &habitacion, int& fila, int& columna){
     {
         char tecla = _getch();
         if (tecla == 'r'){
-            Correr(mapa, habitacion, fila, columna);
+            Correr(mapa, habitacion, fila, columna, vidaM);
             return;
         } else if (tecla == 'f'){
             Fight(mapa, habitacion, fila, columna, vidaM, 9);
